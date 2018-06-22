@@ -92,6 +92,12 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	public GuardType not(GuardType l);
 
 	/**
+	 * An optional operation. Returns a command that executes 'first' and then
+	 * 'second.
+	 */
+	public CmdType sequence(Cmd first, Cmd second);
+
+	/**
 	 * Returns a complete list (including Boolean negation) of likely atomic
 	 * predicates for the given plans
 	 */
@@ -111,6 +117,19 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * @author romanm
 	 */
 	public interface Store {
+	}
+
+	/**
+	 * A marker interface for a store resulting from an application of a command to
+	 * a store that is not in its domain.
+	 * 
+	 * @author romanm
+	 */
+	public interface ErrorStore {
+		/**
+		 * Returns a textual description of the error.
+		 */
+		public String message();
 	}
 
 	/**
