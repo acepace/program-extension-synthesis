@@ -46,7 +46,7 @@ public class JminorInterpreter extends JminorVisitor {
 	 */
 	public Optional<Trace<JmStore, Stmt>> genTrace(Stmt n, JmStore input, int maxSteps) {
 		assert n.concrete();
-		this.trace = new ArrayListTrace<JmStore, Stmt>(input);
+		this.trace = new ArrayListTrace<>(input);
 		run(n, input, maxSteps);
 		if (stepCounter <= maxSteps) {
 			updateTrace(store, store, RetStmt.v);
@@ -289,7 +289,7 @@ public class JminorInterpreter extends JminorVisitor {
 		}
 		Val rval = resultVal;
 
-		resultCond = lval != null && rval != null && lval.equals(rval);
+		resultCond = lval != null && lval.equals(rval);
 	}
 
 	/**

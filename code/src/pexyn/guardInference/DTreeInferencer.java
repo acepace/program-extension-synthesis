@@ -176,7 +176,7 @@ public class DTreeInferencer<ExampleType extends Store, LabelType extends Cmd, F
 		}
 
 		if (bestGuard != null) {
-			return Optional.ofNullable(bestGuard);
+			return Optional.of(bestGuard);
 		} else {
 			return Optional.empty();
 		}
@@ -247,7 +247,7 @@ public class DTreeInferencer<ExampleType extends Store, LabelType extends Cmd, F
 
 		public boolean pure() {
 			assert labelToExample.size() > 0;
-			int uniqueKeys = new HashSet<Cmd>(labelToExample.all1()).size();
+			int uniqueKeys = new HashSet<>(labelToExample.all1()).size();
 			return uniqueKeys == 1;
 		}
 

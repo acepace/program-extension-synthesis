@@ -22,7 +22,7 @@ public interface Searcher<StateType, ActionType> {
 	 *
 	 * @param <StateType>
 	 */
-	public static class SearchResult<StateType> {
+    class SearchResult<StateType> {
 		private final StateType goalNode;
 		private final SearchResultType resultType;
 
@@ -32,15 +32,15 @@ public interface Searcher<StateType, ActionType> {
 		}
 
 		public static <StateType> SearchResult<StateType> of(StateType goalState) {
-			return new SearchResult<StateType>(goalState, SearchResultType.OK);
+			return new SearchResult<>(goalState, SearchResultType.OK);
 		}
 
 		public static <StateType> SearchResult<StateType> noSolutionExists() {
-			return new SearchResult<StateType>(null, SearchResultType.NO_SOLUTION_EXISTS);
+			return new SearchResult<>(null, SearchResultType.NO_SOLUTION_EXISTS);
 		}
 
 		public static <StateType> SearchResult<StateType> outOfResources() {
-			return new SearchResult<StateType>(null, SearchResultType.OUT_OF_RESOURCES);
+			return new SearchResult<>(null, SearchResultType.OUT_OF_RESOURCES);
 		}
 
 		public SearchResultType resultType() {
@@ -75,5 +75,5 @@ public interface Searcher<StateType, ActionType> {
 	 *            condition.
 	 * @return The result of the search.
 	 */
-	public SearchResult<StateType> findState(StateType input, Predicate<StateType> goalTest);
+    SearchResult<StateType> findState(StateType input, Predicate<StateType> goalTest);
 }

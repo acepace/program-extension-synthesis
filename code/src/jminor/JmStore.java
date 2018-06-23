@@ -106,7 +106,7 @@ public class JmStore implements Store {
 	 */
 	@Override
 	public boolean equals(Object o) {
-		if (o == null || !(o instanceof JmStore))
+		if (!(o instanceof JmStore))
 			return false;
 		if (this == o)
 			return true;
@@ -230,7 +230,7 @@ public class JmStore implements Store {
 	/**
 	 * Returns the value stored in the given field of the given object.
 	 * 
-	 * @param var
+	 * @param obj
 	 *            An object.
 	 * @param field
 	 *            A field.

@@ -11,13 +11,13 @@ package pexyn.guardInference;
  *            The type of formulae.
  */
 public interface BooleanDomain<ExampleType, FormulaType> {
-	public FormulaType getTrue();
+	FormulaType getTrue();
 
-	public FormulaType getFalse();
+	FormulaType getFalse();
 
-	public FormulaType and(FormulaType first, FormulaType second);
+	FormulaType and(FormulaType first, FormulaType second);
 
-	public FormulaType or(FormulaType first, FormulaType second);
+	FormulaType or(FormulaType first, FormulaType second);
 
-	public boolean test(ExampleType example, FormulaType feature);
+	boolean test(ExampleType example, FormulaType feature);
 }

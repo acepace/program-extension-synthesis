@@ -483,8 +483,7 @@ public class ProblemCompiler {
 			inputObjNames.remove(AST.NULL_VAL_NAME);
 			// Set<String> goalObjNames = objFinder.find(exampleAST.goal());
 			// goalObjNames.remove(AST.NULL_VAL_NAME);
-			Set<String> allObjNames = new HashSet<>();
-			allObjNames.addAll(inputObjNames);
+			Set<String> allObjNames = new HashSet<>(inputObjNames);
 			// allObjNames.addAll(goalObjNames);
 
 			inferObjectTypes();
@@ -544,7 +543,7 @@ public class ProblemCompiler {
 			} else {
 				// This is an input-only example so the return statement will be added later.
 			}
-			var result = new Example<JmStore, Stmt>(steps, exampleId);
+			var result = new Example<>(steps, exampleId);
 			result.isTest = exampleAST.isTest;
 			return result;
 		}
@@ -703,7 +702,7 @@ public class ProblemCompiler {
 			}
 
 			private void updateType(String objName, RefType type, AST context) {
-				if (objName == AST.NULL_VAL_NAME) {
+				if (objName.equals(AST.NULL_VAL_NAME)) {
 					return;
 				}
 				RefType oldType = objNameToRefType.put(objName, type);

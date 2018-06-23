@@ -29,12 +29,12 @@ public interface ConditionInferencer<StoreType extends Store, CmdType extends Cm
 	 *            A relation between commands and stores.
 	 * @return A classifier or empty if the relation is non-deterministic.
 	 */
-	public Optional<Map<Cmd, ? extends Guard>> infer(Rel2<Cmd, Store> cmdToStore);
+    Optional<Map<Cmd, ? extends Guard>> infer(Rel2<Cmd, Store> cmdToStore);
 
 	/**
 	 * The list of basic guards that are being considered by the inferencer.
 	 * 
 	 * @return
 	 */
-	public List<GuardType> guards();
+    List<GuardType> guards();
 }

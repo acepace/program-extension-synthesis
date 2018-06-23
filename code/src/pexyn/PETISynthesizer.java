@@ -69,12 +69,12 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 		ConditionInferencer<StoreType, CmdType, GuardType> separator;
 		var shortCiruitEvaluationSemantics = config.getBoolean("pexyn.shortCiruitEvaluationSemantics", true);
 		var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
-		separator = new DTreeInferencer<StoreType, CmdType, GuardType>(problem.semantics(), basicGuards,
-				shortCiruitEvaluationSemantics);
+		separator = new DTreeInferencer<>(problem.semantics(), basicGuards,
+                shortCiruitEvaluationSemantics);
 		debugPrintGuards(separator.guards());
 
 		logger.info("Generalizing " + trainingPlans.size() + " plans...");
-		var learner = new PETI<StoreType, CmdType, GuardType>(problem.semantics(), separator, debugger, logger);
+		var learner = new PETI<>(problem.semantics(), separator, debugger, logger);
 		var learningTime = new Timer();
 		learningTime.start();
 		var learningResult = learner.infer(trainingPlans);
@@ -144,7 +144,7 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 				continue;
 			}
 			++numOfTests;
-			var interpreter = new AutomatonInterpreter<StoreType, CmdType, GuardType>(automaton, problem.semantics());
+			var interpreter = new AutomatonInterpreter<>(automaton, problem.semantics());
 			var optAutomatonTrace = interpreter.genTrace(example.input(), maxTraceLength);
 			if (!optAutomatonTrace.isPresent() || !optAutomatonTrace.get().eqDeterministic(plan)) {
 				{
@@ -158,15 +158,15 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 					}
 				}
 				exampleToCompareResult.put(example, Boolean.FALSE);
-				message.append("Testing example " + example.name + ": fail" + System.lineSeparator());
+				message.append("Testing example ").append(example.name).append(": fail").append(System.lineSeparator());
 				result = false;
 			} else {
-				message.append("Testing example " + example.name + ": success" + System.lineSeparator());
+				message.append("Testing example ").append(example.name).append(": success").append(System.lineSeparator());
 				exampleToCompareResult.put(example, Boolean.TRUE);
 				++numOfTestsSucceeded;
 			}
 		}
-		message.append("Succeeded on " + numOfTestsSucceeded + " out of " + numOfTests + " test examples.");
+		message.append("Succeeded on ").append(numOfTestsSucceeded).append(" out of ").append(numOfTests).append(" test examples.");
 		debugger.addCodeFile("Synthesizer message", message.toString(), "Synthesis test results");
 		return result;
 	}
@@ -180,11 +180,11 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 	protected void debugPrintGuards(Collection<GuardType> guards) {
 		final var maxGuardPrintCount = config.getInt("pexyn.printGuardCountBound", -1);
 		var txt = new StringBuilder();
-		txt.append("#guards=" + guards.size());
+		txt.append("#guards=").append(guards.size());
 		txt.append("\n=============\n");
 		var guardCounter = 0;
 		for (var guard : guards) {
-			txt.append(guard + "\n");
+			txt.append(guard).append("\n");
 			++guardCounter;
 			if (maxGuardPrintCount >= 0 && guardCounter > maxGuardPrintCount) {
 				txt.append("...");

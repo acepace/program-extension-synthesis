@@ -15,62 +15,62 @@ public interface Trace<StateType, ActionType> {
 	/**
 	 * Returns the number of states in the plan.
 	 */
-	public int size();
+	int size();
 
 	/**
 	 * Holds if there are no states in this plan.
 	 */
-	public default boolean isEmpty() {
+	default boolean isEmpty() {
 		return size() == 0;
 	}
 
 	/**
 	 * Allows iterating over the sequence of states in this trace.
 	 */
-	public Iterable<StateType> states();
+	Iterable<StateType> states();
 
 	/**
 	 * Allows iterating over the sequence of actions in this trace.
 	 */
-	public Iterable<ActionType> actions();
+	Iterable<ActionType> actions();
 
 	/**
 	 * Returns the state at the given position, which must be within 0 and
 	 * <code>size()</code>.
 	 */
-	public StateType stateAt(int i);
+	StateType stateAt(int i);
 
 	/**
 	 * Returns the action at the given position, which must be within 0 and
 	 * <code>size()-1</code>.
 	 */
-	public ActionType actionAt(int i);
+	ActionType actionAt(int i);
 
-	public default StateType firstState() {
+	default StateType firstState() {
 		return stateAt(0);
 	}
 
-	public default StateType lastState() {
+	default StateType lastState() {
 		assert !isEmpty();
 		return stateAt(size() - 1);
 	}
 
-	public void setFirst(StateType state);
+	void setFirst(StateType state);
 
 	/**
 	 * Precondition: <code>!isEmpty()</code>
 	 */
-	public void append(ActionType action, StateType state);
+	void append(ActionType action, StateType state);
 
 	/**
 	 * Precondition: <code>!isEmpty()</code>
 	 */
-	public void prepend(ActionType action, StateType state);
+	void prepend(ActionType action, StateType state);
 
 	/**
 	 * Precondition: <code>!isEmpty()</code>
 	 */
-	public default void appendPlan(Trace<StateType, ActionType> other) {
+	default void appendPlan(Trace<StateType, ActionType> other) {
 		if (other.isEmpty()) {
 			return;
 		} else {
@@ -86,12 +86,12 @@ public interface Trace<StateType, ActionType> {
 	/**
 	 * Precondition: <code>!isEmpty()</code>
 	 */
-	public void prependPlan(Trace<StateType, ActionType> other);
+	void prependPlan(Trace<StateType, ActionType> other);
 
 	/**
 	 * Compares two plans, assuming actions are deterministic.
 	 */
-	public default boolean eqDeterministic(Trace<StateType, ActionType> other) {
+	default boolean eqDeterministic(Trace<StateType, ActionType> other) {
 		return this.firstState().equals(other.firstState()) && this.actions().equals(other.actions());
 	}
 }

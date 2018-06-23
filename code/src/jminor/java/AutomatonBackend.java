@@ -118,7 +118,7 @@ public class AutomatonBackend {
 				config.getString("pexyn.implementationDir", ".") + File.separator + classFileName);
 	}
 
-	public static enum TransitionType {
+	public enum TransitionType {
 		UPDATE, FIRST, MIDDLE, LAST
 	}
 
@@ -164,12 +164,13 @@ public class AutomatonBackend {
 	}
 
 	public static String stateName(String originalName) {
-		if (originalName.equals("initial")) {
-			return "ENTRY";
-		} else if (originalName.equals("final")) {
-			return "EXIT";
-		} else {
-			return originalName;
+		switch (originalName) {
+			case "initial":
+				return "ENTRY";
+			case "final":
+				return "EXIT";
+			default:
+				return originalName;
 		}
 	}
 }

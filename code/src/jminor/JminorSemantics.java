@@ -173,7 +173,7 @@ public class JminorSemantics implements StructuredSemantics<JmStore, Stmt, BoolE
 			for (Field f : lhs.getType().fields) {
 				if (f instanceof RefField) {
 					// lhs.f = null
-					result.add(new AssignStmt(new DerefExpr(new VarExpr(lhs), (RefField) f), NullExpr.v));
+					result.add(new AssignStmt(new DerefExpr(new VarExpr(lhs), f), NullExpr.v));
 				}
 				for (Var rhs : typeToVar.select1(f.dstType)) {
 					// lhs.f = rhs
@@ -261,7 +261,7 @@ public class JminorSemantics implements StructuredSemantics<JmStore, Stmt, BoolE
 		result.addAll(doubleOrPosNeg);
 
 		var sizeFun = new CostSize();
-		Collections.sort(result, (e1, e2) -> {
+		result.sort((e1, e2) -> {
 			var diff = sizeFun.apply(e1) - sizeFun.apply(e2);
 			return (int) diff;
 		});
@@ -368,7 +368,7 @@ public class JminorSemantics implements StructuredSemantics<JmStore, Stmt, BoolE
 		// storeVals.add(max);
 		storeVals.add(new IntVal(0));
 		storeVals.add(new IntVal(1));
-		final var intVals = new HashSet<IntVal>(storeVals);
+		final var intVals = new HashSet<>(storeVals);
 		intVals.addAll(stmtVals);
 
 		final var intExprs = new ArrayList<Expr>();

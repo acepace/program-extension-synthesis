@@ -110,8 +110,7 @@ public class JavaHeapWalker {
 
 		Set<Object> marked = new HashSet<>();
 
-		Set<Object> frontier = new HashSet<>();
-		frontier.addAll(javaObjectToSynthObj.keySet());
+		Set<Object> frontier = new HashSet<>(javaObjectToSynthObj.keySet());
 		while (!frontier.isEmpty()) {
 			Iterator<Object> iter = frontier.iterator();
 			Object o = iter.next();

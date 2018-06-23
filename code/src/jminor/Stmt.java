@@ -62,9 +62,7 @@ public abstract class Stmt extends Node implements Cmd {
 	protected Stmt(Node... args) {
 		super(countNonterminals(args));
 		var argList = new ArrayList<Node>(args.length);
-		for (Node n : args) {
-			argList.add(n);
-		}
+		Collections.addAll(argList, args);
 		this.args = Collections.unmodifiableList(argList);
 	}
 

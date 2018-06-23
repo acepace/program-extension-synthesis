@@ -24,12 +24,12 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	/**
 	 * The name of this semantics.
 	 */
-	public String name();
+    String name();
 
 	/**
 	 * Returns the always-true predicate.
 	 */
-	public GuardType getTrue();
+    GuardType getTrue();
 
 	/**
 	 * Tests whether the given predicate holds for the given store.
@@ -41,18 +41,18 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 *            A value of type {@link StoreType}. A cast down should be safe for
 	 *            the instantiating semantics.
 	 */
-	public boolean test(GuardType guard, StoreType store);
+    boolean test(GuardType guard, StoreType store);
 
 	/**
 	 * Returns the cost of the given guard, which is used as a preference for guard
 	 * inference.
 	 */
-	public float guardCost(GuardType guard);
+    float guardCost(GuardType guard);
 
 	/**
 	 * Tests whether the first store matches (i.e., subsumed by) the second store.
 	 */
-	public boolean match(StoreType first, StoreType second);
+    boolean match(StoreType first, StoreType second);
 
 	/**
 	 * Attempts to apply the given update to the given value.
@@ -64,50 +64,49 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * @return the resulting value, if the update can be applied to the input value
 	 *         and empty otherwise.
 	 */
-	public abstract Optional<StoreType> apply(CmdType update, StoreType value);
+    Optional<StoreType> apply(CmdType update, StoreType value);
 
 	/**
 	 * Returns a list of likely predicates for the given plans.
 	 */
-	public List<GuardType> generateGuards(List<Trace<StoreType, CmdType>> plans);
+    List<GuardType> generateGuards(List<Trace<StoreType, CmdType>> plans);
 
 	/**
 	 * Returns a list of likely atomic predicates for the given plans.
 	 */
-	public List<GuardType> generateBasicGuards(List<Trace<StoreType, CmdType>> plans);
+    List<GuardType> generateBasicGuards(List<Trace<StoreType, CmdType>> plans);
 
 	/**
 	 * Constructs a disjunction of guards.
 	 */
-	public GuardType or(GuardType l, GuardType r);
+    GuardType or(GuardType l, GuardType r);
 
 	/**
 	 * Constructs a conjunction of guards.
 	 */
-	public GuardType and(GuardType l, GuardType r);
+    GuardType and(GuardType l, GuardType r);
 
 	/**
 	 * Constructs a negated guard.
 	 */
-	public GuardType not(GuardType l);
+    GuardType not(GuardType l);
 
 	/**
 	 * Returns a command that executes 'first' and then 'second.
 	 */
-	public CmdType sequence(Cmd first, Cmd second);
+    CmdType sequence(Cmd first, Cmd second);
 	
-	public CmdType condition(GuardType cond, Cmd first, Cmd second);
+	CmdType condition(GuardType cond, Cmd first, Cmd second);
 
-	public CmdType loop(GuardType cond, Cmd body);
+	CmdType loop(GuardType cond, Cmd body);
 	
 	/**
 	 * Returns a complete list (including Boolean negation) of likely atomic
 	 * predicates for the given plans
 	 */
-	public default List<GuardType> generateCompleteBasicGuards(List<Trace<StoreType, CmdType>> plans) {
-		var result = new ArrayList<GuardType>();
+	default List<GuardType> generateCompleteBasicGuards(List<Trace<StoreType, CmdType>> plans) {
 		var basicGuards = generateBasicGuards(plans);
-		result.addAll(basicGuards);
+		var result = new ArrayList<GuardType>(basicGuards);
 		for (var guard : basicGuards) {
 			result.add(not(guard));
 		}
@@ -119,7 +118,7 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * 
 	 * @author romanm
 	 */
-	public interface Store {
+    interface Store {
 	}
 
 	/**
@@ -128,11 +127,11 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * 
 	 * @author romanm
 	 */
-	public interface ErrorStore {
+    interface ErrorStore {
 		/**
 		 * Returns a textual description of the error.
 		 */
-		public String message();
+        String message();
 	}
 
 	/**
@@ -140,7 +139,7 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * 
 	 * @author romanm
 	 */
-	public interface Cmd {
+    interface Cmd {
 	}
 
 	/**
@@ -148,6 +147,6 @@ public interface Semantics<StoreType extends Store, CmdType extends Cmd, GuardTy
 	 * 
 	 * @author romanm
 	 */
-	public interface Guard {
+    interface Guard {
 	}
 }

@@ -24,7 +24,7 @@ public abstract class Var extends Token {
 	 * 
 	 * @author romanm
 	 */
-	public static enum VarRole {
+	public enum VarRole {
 		/**
 		 * A procedure input/output argument.
 		 */

@@ -19,9 +19,6 @@ import pexyn.Semantics.Store;
  * An inferencer based on finding a Boolean Craig interpolant.
  * 
  * @author alex
- *
- * @param <StateType>
- *            The type of states over which conditions range.
  */
 public class InterpolatingConditionInferencer {
 	private String outputDir;

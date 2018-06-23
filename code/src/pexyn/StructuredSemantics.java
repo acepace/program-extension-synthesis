@@ -22,9 +22,9 @@ public interface StructuredSemantics<StoreType extends Store, CmdType extends Cm
 	/**
 	 * Returns a command that executes 'first' and then 'second.
 	 */
-	public CmdType sequence(Cmd first, Cmd second);
+    CmdType sequence(Cmd first, Cmd second);
 
-	public CmdType condition(GuardType cond, Cmd first, Cmd second);
+	CmdType condition(GuardType cond, Cmd first, Cmd second);
 
-	public CmdType loop(GuardType cond, Cmd body);
+	CmdType loop(GuardType cond, Cmd body);
 }

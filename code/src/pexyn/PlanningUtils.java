@@ -40,9 +40,7 @@ public class PlanningUtils {
 			Union2<StoreType, CmdType> step = example.steps.get(i);
 			if (step.isT1()) {
 				var stateGoal = step.getT1();
-				SearchResultType planResult = planner.findPlan(current, state -> {
-					return semantics.match(state, stateGoal);
-				}, plan);
+				SearchResultType planResult = planner.findPlan(current, state -> semantics.match(state, stateGoal), plan);
 				switch (planResult) {
 				case OK:
 					current = plan.lastState();

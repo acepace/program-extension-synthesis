@@ -34,6 +34,9 @@ public class Action {
 		if (o == this) {
 			return true;
 		}
+		if (!(o instanceof Action)) {
+			return false;
+		}
 		Action other = (Action) o;
 		return this.guard.equals(other.guard) && this.update.equals(other.update);
 	}
