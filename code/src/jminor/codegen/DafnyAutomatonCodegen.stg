@@ -8,9 +8,26 @@ method $methodName$($args:{it|$it.name$ : $it.type$}; separator=", "$) $if(retur
   // Initialize local variables to their default values.
   $locals:{it|var $it.name$ : $it.type$ := $it.defaultVal$;}; separator="\n"$
   $if(returnArg)$$returnArg.name$  := $returnArg.defaultVal$;$else$$endif$
-  
+
   $stateCodes$
   $if(returnArg)$return $returnArg.name$;$endif$
+}
+>>
+
+AnalyserClassFile(className, methodName, args,locals, init_code, stateCodes, requireStmts, postStmts) ::= <<
+/** Automatically-generated code.
+ */
+
+/** Synthesized method.
+ */
+method $methodName$($args:{it|$it.name$ : $it.type$}; separator=", "$)
+  $requireStmts; separator="\n"$
+{
+
+  $init_code; separator="\n"$
+  $locals:{it|var $it.name$ : $it.type$ := $it.defaultVal$;}; separator="\n"$
+  $stateCodes$
+  $postStmts; separator="\n"$
 }
 >>
 
@@ -32,6 +49,10 @@ method $methodName$($args:{it|$it.name$ : $it.type$}; separator=", "$) $if(retur
   }
   $if(returnArg)$return $returnArg.name$;$endif$
 }
+>>
+
+PreStmt(guard) ::= <<
+assert $guard$;
 >>
 
 StateCode(name, transitions, assertion) ::= <<
