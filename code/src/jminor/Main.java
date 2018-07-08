@@ -104,7 +104,7 @@ public class Main {
             debugger.printExamples(problem.examples);
             synthesisTime.start();
             var planner = new AStar<>(new BasicJminorTR(problem.semantics));
-            var synthesizer = new PETISynthesizer<JmStore, Stmt, BoolExpr>(planner, config, debugger);
+            var synthesizer = new PETISynthesizer<>(planner, config, debugger);
             var synthesisResult = synthesizer.synthesize(problem);
             if (synthesisResult.success()) {
                 debugger.info("PETI: found program automaton!");
@@ -112,11 +112,9 @@ public class Main {
                 // since currently a command sequence is counted as an atomic
                 // command, which fails the tests.
                 var automaton = synthesisResult.get();
-                //guards before compression because then we lose the data
-                var guards = automaton.getGuards();
-                var cmds = automaton.getCommands();
+                //analysis before compression because then we lose the data
                 if (config.getBoolean("pexyn.collectAssertions", false)) {
-                    var analyser = new DafnyAnalyser(problem, automaton, config, guards, cmds);
+                    var analyser = new DafnyAnalyser(problem, automaton, config, debugger);
                     analyser.collectAssertions();
                 }
                 if (config.getBoolean("pexyn.structureResultAutomaton", false)) {
