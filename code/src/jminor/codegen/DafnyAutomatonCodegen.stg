@@ -32,12 +32,7 @@ method $methodName$($args:{it|$it.name$ : $it.type$}; separator=", "$)
 >>
 
 ClassFile(className, methodName, returnArg, args, locals, states, stateCodes) ::= <<
-/** Automatically-generated code.
- */
-datatype State = $states; separator=" | "$
 
-/** Synthesized method.
- */
 method $methodName$($args:{it|$it.name$ : $it.type$}; separator=", "$) $if(returnArg)$returns ($returnArg.name$ : $returnArg.type$) $else$void$endif$ {
   // Initialize local variables to their default values.
   $locals:{it|var $it.name$ : $it.type$ := $it.defaultVal$;}; separator="\n"$
