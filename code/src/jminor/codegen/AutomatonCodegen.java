@@ -1,7 +1,8 @@
-package jminor.java;
+package jminor.codegen;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 import org.apache.commons.configuration2.Configuration;
 import org.stringtemplate.v4.ST;
@@ -12,7 +13,7 @@ import bgu.cs.util.StringUtils;
 import bgu.cs.util.graph.MultiGraph.Edge;
 import jminor.JminorDebugger;
 import jminor.JminorProblem;
-import jminor.IntVar;
+import jminor.PrimitiveVar;
 import jminor.RefVar;
 import jminor.Var;
 import pexyn.generalization.Action;
@@ -24,26 +25,53 @@ import pexyn.generalization.State;
  * 
  * @author romanm
  */
-public class AutomatonBackend {
-	private final STGLoader templates = new STGLoader(AutomatonBackend.class);
-
+public class AutomatonCodegen {
 	private final Automaton automaton;
 	private final JminorProblem problem;
 	private final Configuration config;
 	private final JminorDebugger debugger;
+	private final Logger logger;
 
-	public AutomatonBackend(Automaton automaton, JminorProblem problem, Configuration config, JminorDebugger debugger) {
+	private final STGLoader templates;
+	private final String languageName;
+	private final String fileSuffix;
+	private final SemanticsRenderer semRenderer;
+
+	public static AutomatonCodegen forJava(Automaton automaton, JminorProblem problem, Configuration config,
+			JminorDebugger debugger, Logger logger) {
+		return new AutomatonCodegen(automaton, problem, config, debugger, logger, "Java", "java",
+				new STGLoader(AutomatonCodegen.class, "JavaAutomatonCodegen.stg"), new JavaSemanticsRenderer());
+	}
+
+	public static AutomatonCodegen forDafny(Automaton automaton, JminorProblem problem, Configuration config,
+			JminorDebugger debugger, Logger logger) {
+		return new AutomatonCodegen(automaton, problem, config, debugger, logger, "Dafny", "dfy",
+				new STGLoader(AutomatonCodegen.class, "DafnyAutomatonCodegen.stg"), new DafnySemanticsRenderer());
+	}
+
+	public AutomatonCodegen(Automaton automaton, JminorProblem problem, Configuration config, JminorDebugger debugger,
+			Logger logger, String languageName, String fileSuffix, STGLoader templates, SemanticsRenderer semRenderer) {
 		this.automaton = automaton;
+		;
 		this.problem = problem;
 		this.config = config;
 		this.debugger = debugger;
+		this.logger = logger;
+		this.templates = templates;
+		this.languageName = languageName;
+		this.fileSuffix = fileSuffix;
+		this.semRenderer = semRenderer;
 	}
 
 	public void generate() {
+		if (automaton.outDegree(automaton.getInitial()) == 0) {
+			logger.info("Encountered degenerate automaton. Skipped code generation.");
+			return;
+		}
 		var className = StringUtils.capitalizeFirst(problem.name);
 		var methodName = problem.name;
-		var classFileName = className + ".java";
-		var classFileST = templates.load("ClassFile");
+		var classFileName = className + "." + fileSuffix;
+		var classFileST = isDegenerateAutomaton() ? templates.load("SimpleClassFile") : templates.load("ClassFile");
 		classFileST.add("className", className);
 		classFileST.add("methodName", methodName);
 		for (var inputArg : problem.inputArgs) {
@@ -56,10 +84,26 @@ public class AutomatonBackend {
 			classFileST.add("locals", new JavaVar(temp));
 		}
 
-		for (var state : automaton.getNodes()) {
-			classFileST.add("states", stateName(state.toString()));
+		if (isDegenerateAutomaton()) {
+			var cmd = automaton.succEdges(automaton.getInitial()).iterator().next().label.update;
+			classFileST.add("stateCodes", semRenderer.renderCmd(cmd));
+		} else {
+			for (var state : automaton.getNodes()) {
+				classFileST.add("states", stateName(state.toString()));
+			}
+			renderTransitions(classFileST);
 		}
 
+		var text = classFileST.render();
+		debugger.addCodeFile(fileSuffix + "-implementation.txt", text, "A " + languageName + " implementation");
+		FileUtils.stringToFile(text, config.getString("pexyn.implementationDir", ".") + File.separator + classFileName);
+	}
+
+	private boolean isDegenerateAutomaton() {
+		return automaton.degree(automaton.getInitial()) == 1;
+	}
+
+	private void renderTransitions(ST classFileST) {
 		for (var state : automaton.getNodes()) {
 			if (state == automaton.getFinal()) {
 				continue;
@@ -104,14 +148,9 @@ public class AutomatonBackend {
 			}
 			classFileST.add("stateCodes", stateCodeST.render());
 		}
-
-		var text = classFileST.render();
-		debugger.addCodeFile("implementation.txt", text, "A Java implementation");
-		FileUtils.stringToFile(text,
-				config.getString("pexyn.implementationDir", ".") + File.separator + classFileName);
 	}
 
-	public static enum TransitionType {
+	public enum TransitionType {
 		UPDATE, FIRST, MIDDLE, LAST
 	}
 
@@ -125,7 +164,7 @@ public class AutomatonBackend {
 			this.succ = stateName(e.getDst().toString());
 			var guard = e.getLabel().guard();
 			if (guard != null) {
-				this.guard = guard.toString();
+				this.guard = semRenderer.renderGuard(guard);
 			} else {
 				this.guard = null;
 			}
@@ -133,7 +172,7 @@ public class AutomatonBackend {
 			if (update.toString().equals("return")) {
 				this.command = "// finish";
 			} else {
-				this.command = update.toString();
+				this.command = semRenderer.renderCmd(update);
 			}
 		}
 	}
@@ -146,7 +185,7 @@ public class AutomatonBackend {
 		public JavaVar(Var v) {
 			this.name = v.name;
 			this.type = v.getType().getName();
-			if (v instanceof IntVar) {
+			if (v instanceof PrimitiveVar) {
 				this.defaultVal = "0";
 			} else if (v instanceof RefVar) {
 				this.defaultVal = "null";
@@ -157,12 +196,13 @@ public class AutomatonBackend {
 	}
 
 	public static String stateName(String originalName) {
-		if (originalName.equals("initial")) {
-			return "ENTRY";
-		} else if (originalName.equals("final")) {
-			return "EXIT";
-		} else {
-			return originalName;
+		switch (originalName) {
+			case "initial":
+				return "ENTRY";
+			case "final":
+				return "EXIT";
+			default:
+				return originalName;
 		}
 	}
 }

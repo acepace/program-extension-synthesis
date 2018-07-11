@@ -27,7 +27,7 @@ public abstract class SynthesisProblem<StoreType extends Store, CmdType extends 
 	 * 
 	 * @author romanm
 	 */
-	public static enum SpecTestResult {
+	public enum SpecTestResult {
 		SPEC_FAIL, SPEC_SATISFIED, ILLEGAL;
 
 		@Override

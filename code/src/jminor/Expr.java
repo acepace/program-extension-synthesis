@@ -1,9 +1,6 @@
 package jminor;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import bgu.cs.util.treeGrammar.Node;
 
@@ -53,9 +50,7 @@ public abstract class Expr extends Node {
 	protected Expr(Node... nodes) {
 		super(countNonterminals(nodes));
 		var argList = new ArrayList<Node>(nodes.length);
-		for (Node n : nodes) {
-			argList.add(n);
-		}
+		argList.addAll(Arrays.asList(nodes));
 		args = Collections.unmodifiableList(argList);
 	}
 }

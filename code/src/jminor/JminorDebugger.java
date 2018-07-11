@@ -103,8 +103,8 @@ public class JminorDebugger extends GPDebugger<JmStore, Stmt, BoolExpr> {
 			String filename = "Plan" + planIndex + "_" + 0 + "." + STATE_IMAGE_FILE_POSTFIX;
 			String filePath = outputDirPath + File.separator + filename;
 			StoreUtils.printStore(store, filePath, logger);
-			planTemplate.add("indexedStore", new Pair<String, String>(filename, "" + 0));
-			planTemplate.add("indexedAction", new Pair<String, String>("initial", "" + 0));
+			planTemplate.add("indexedStore", new Pair<>(filename, "" + 0));
+			planTemplate.add("indexedAction", new Pair<>("initial", "" + 0));
 		}
 		for (int actionIndex = 0; actionIndex < plan.size() - 1; ++actionIndex) {
 			JmStore store = plan.stateAt(actionIndex + 1);
@@ -113,9 +113,9 @@ public class JminorDebugger extends GPDebugger<JmStore, Stmt, BoolExpr> {
 			String filename = "Plan" + planIndex + "_" + storeIndex + "." + STATE_IMAGE_FILE_POSTFIX;
 			String filePath = outputDirPath + File.separator + filename;
 			StoreUtils.printStore(store, filePath, logger);
-			planTemplate.add("indexedStore", new Pair<String, String>(filename, "" + storeIndex));
+			planTemplate.add("indexedStore", new Pair<>(filename, "" + storeIndex));
 			String actionStr = Renderer.render(action);
-			planTemplate.add("indexedAction", new Pair<String, String>(actionStr, "" + storeIndex));
+			planTemplate.add("indexedAction", new Pair<>(actionStr, "" + storeIndex));
 		}
 		String planFileName = "Plan" + planIndex + ".html";
 		String planFilePath = outputDirPath + File.separator + planFileName;

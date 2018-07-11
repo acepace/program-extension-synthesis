@@ -14,8 +14,10 @@ import bgu.cs.util.Timer;
 import jminor.ast.ASTProblem;
 import jminor.ast.JminorParser;
 import jminor.ast.ProblemCompiler;
+import jminor.codegen.AutomatonCodegen;
 import pexyn.PETISynthesizer;
-import pexyn.generalization.AutomatonOps;
+import pexyn.StructuredSemantics;
+import pexyn.generalization.AutomatonToStructuredCmd;
 import pexyn.planning.AStar;
 
 /**
@@ -100,35 +102,39 @@ public class Main {
 			debugger.addCodeFile("problem.txt", problem.toString(), "Specification");
 			debugger.printExamples(problem.examples);
 			synthesisTime.start();
-			var planner = new AStar<JmStore, Stmt>(new BasicJminorTR(problem.semantics));
-			var synthesizer = new PETISynthesizer<JmStore, Stmt, BoolExpr>(planner, config, logger, debugger);
+			var planner = new AStar<>(new BasicJminorTR(problem.semantics));
+			var synthesizer = new PETISynthesizer<JmStore, Stmt, BoolExpr>(planner, config, debugger);
 			var synthesisResult = synthesizer.synthesize(problem);
 			if (synthesisResult.success()) {
-				logger.info("success!");
-				if (config.getBoolean("jminor.generateJavaImplementation", true)) {
-					// We have to shrink _after_ testing against the test examples,
-					// since currently a command sequence is counted as an atomic
-					// command, which fails the tests.
-					var automaton = synthesisResult.get();
-					if (config.getBoolean("pexyn.shrinkResultAutomaton", false)) {
-						AutomatonOps.shrinkBlocks(automaton, problem.semantics());
-						debugger.printAutomaton(automaton, "Shrunk automaton");
-					}
-					var backend = new jminor.java.AutomatonBackend(automaton, problem, config, debugger);
-					backend.generate();
-					var dfYbackend = new jminor.dafny.AutomatonBackend(automaton, problem, config, debugger);
-					dfYbackend.generate();
+				debugger.info("PETI: found program automaton!");
+				// We have to structure _after_ testing against the test examples,
+				// since currently a command sequence is counted as an atomic
+				// command, which fails the tests.
+				var automaton = synthesisResult.get();
+				if (config.getBoolean("pexyn.structureResultAutomaton", false)) {
+					new AutomatonToStructuredCmd<JmStore, Stmt, BoolExpr>(
+							(StructuredSemantics<JmStore, Stmt, BoolExpr>) problem.semantics()).compress(automaton);
+					debugger.printAutomaton(automaton, "Compressed automaton");
 				}
+				if (config.getBoolean("jminor.generateJavaImplementation", true)) {
+					var backend = AutomatonCodegen.forJava(automaton, problem, config, debugger, logger);
+					backend.generate();
+				}
+				if (config.getBoolean("jminor.generateDafnyImplementation", true)) {
+					var backend = AutomatonCodegen.forDafny(automaton, problem, config, debugger, logger);
+					backend.generate();
+				}
+
 			} else {
-				logger.info("fail!");
+				debugger.warning("PETI: failed to find program automaton!");
 			}
 		} catch (Throwable t) {
-			logger.severe(t.toString());
+			debugger.severe(t.toString());
 			t.printStackTrace();
 		} finally {
 			synthesisTime.stop();
-			logger.info("Planning time: " + planningTime.toSeconds());
-			logger.info("Synthesizer: done! (" + synthesisTime.toSeconds() + ")");
+			debugger.info("Planning time: " + planningTime.toSeconds());
+			debugger.info("Synthesizer: done! (" + synthesisTime.toSeconds() + ")");
 			debugger.refresh();
 		}
 	}

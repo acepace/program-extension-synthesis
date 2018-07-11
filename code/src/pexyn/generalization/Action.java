@@ -34,13 +34,17 @@ public class Action {
 		if (o == this) {
 			return true;
 		}
+		if (!(o instanceof Action)) {
+			return false;
+		}
 		Action other = (Action) o;
 		return this.guard.equals(other.guard) && this.update.equals(other.update);
 	}
 
 	@Override
 	public int hashCode() {
-		return update.hashCode() * 31 + guard.hashCode();
+		// We do not take the guard into account, since it can be externally mutated.
+		return update.hashCode() * 31;
 	}
 
 	@Override
@@ -48,9 +52,9 @@ public class Action {
 		var result = new Action(guard, update);
 		return result;
 	}
-	
+
 	@Override
 	public String toString() {
-		return guard.toString() + " / "+ update.toString();
+		return guard.toString() + " / " + update.toString();
 	}
 }

@@ -44,12 +44,12 @@ public class StoreUtils {
 	}
 
 	public static boolean typecheck(Var var, Val v) {
-		return (var instanceof IntVar && v instanceof IntVal)
+		return (var instanceof PrimitiveVar && v instanceof PrimitiveVal)
 				|| (var instanceof RefVar && (v == null || v instanceof Obj));
 	}
 
 	public static boolean typecheck(Field field, Val v) {
-		return (field instanceof IntField && v instanceof IntVal)
+		return (field instanceof PrimitiveField && v instanceof IntVal)
 				|| (field instanceof RefField && (v == null || v instanceof Obj));
 	}
 
@@ -95,7 +95,7 @@ public class StoreUtils {
 					objContent.add("vals", f.name + "=" + store.eval(o, f).toString());
 				}
 			}
-			template.add("objects", new Pair<String, String>(dotNodeName, objContent.render()));
+			template.add("objects", new Pair<>(dotNodeName, objContent.render()));
 			++i;
 		}
 
@@ -109,7 +109,7 @@ public class StoreUtils {
 			} else {
 				if (store.isInitialized(var)) {
 					template.add("nonRefVarVals",
-							new Pair<String, String>(var.name, var.name + "==" + store.eval(var)));
+                            new Pair<>(var.name, var.name + "==" + store.eval(var)));
 				}
 			}
 		}
@@ -120,7 +120,7 @@ public class StoreUtils {
 				RefVar refVar = (RefVar) var;
 				Obj o = (Obj) val;
 				template.add("refVarVals",
-						new Pair<String, String>(refVarToDotNodeName.get(refVar), objToDotNodeName.get(o)));
+                        new Pair<>(refVarToDotNodeName.get(refVar), objToDotNodeName.get(o)));
 			}
 		});
 
@@ -132,7 +132,7 @@ public class StoreUtils {
 					RefField refField = (RefField) f;
 					Obj dst = store.eval(src, refField);
 					String dstName = objToDotNodeName.get(dst);
-					template.add("refFields", new Tuple3<String, String, String>(srcName, dstName, refField.name));
+					template.add("refFields", new Tuple3<>(srcName, dstName, refField.name));
 				}
 			}
 		}
@@ -165,7 +165,7 @@ public class StoreUtils {
 	}
 
 	public static boolean reachableObjects(JmStore state) {
-		return reachableObjects(state, new LinkedList<Var>());
+		return reachableObjects(state, new LinkedList<>());
 	}
 
 	public static boolean reachableObjects(JmStore state, Collection<Var> excludeSet) {
@@ -184,7 +184,7 @@ public class StoreUtils {
 	}
 
 	public static List<Obj> search(JmStore store, boolean depth) {
-		return search(store, depth, new LinkedList<Var>());
+		return search(store, depth, new LinkedList<>());
 	}
 
 	public static List<Obj> search(JmStore store, boolean depth, Collection<Var> excludeSet) {

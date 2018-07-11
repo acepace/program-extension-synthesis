@@ -7,23 +7,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import org.apache.commons.configuration2.Configuration;
 
 import bgu.cs.util.Timer;
-import pexyn.Semantics.Guard;
 import pexyn.Semantics.Cmd;
 import pexyn.Semantics.ErrorStore;
+import pexyn.Semantics.Guard;
 import pexyn.Semantics.Store;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.AutomatonInterpreter;
+import pexyn.generalization.PETI;
 import pexyn.generalization.Result;
 import pexyn.guardInference.ConditionInferencer;
 import pexyn.guardInference.DTreeInferencer;
-import pexyn.guardInference.ID3Inferencer;
-import pexyn.guardInference.LinearInferencer;
-import pexyn.generalization.PETI;
 import pexyn.planning.Planner;
 
 /**
@@ -47,14 +44,12 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 	private final Planner<StoreType, CmdType> planner;
 	private final Configuration config;
 	private final GPDebugger<StoreType, CmdType, GuardType> debugger;
-	private final Logger logger;
 
-	public PETISynthesizer(Planner<StoreType, CmdType> planner, Configuration config, Logger logger,
+	public PETISynthesizer(Planner<StoreType, CmdType> planner, Configuration config,
 			GPDebugger<StoreType, CmdType, GuardType> debugger) {
 		assert planner != null;
 		this.config = config;
 		this.planner = planner;
-		this.logger = logger;
 		this.debugger = debugger;
 		maxTraceLength = config.getInt("pexyn.maxTraceLength", 200);
 	}
@@ -69,32 +64,26 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 		});
 
 		ConditionInferencer<StoreType, CmdType, GuardType> separator;
-		var guardInfAlgName = config.getString("pexyn.guardInferenceAlgorithm", "");
 		var shortCiruitEvaluationSemantics = config.getBoolean("pexyn.shortCiruitEvaluationSemantics", true);
-		if (guardInfAlgName.equals("ID3")) {
-			separator = new ID3Inferencer<StoreType, CmdType, GuardType>(problem.semantics(), trainingPlans);
-		} else if (guardInfAlgName.equals("dtree")) {
-			var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
-			separator = new DTreeInferencer<StoreType, CmdType, GuardType>(problem.semantics(), basicGuards,
-					shortCiruitEvaluationSemantics);
-		} else {
-			separator = new LinearInferencer<StoreType, CmdType, GuardType>(problem.semantics(), trainingPlans);
-		}
+		var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
+		separator = new DTreeInferencer<>(problem.semantics(), basicGuards,
+                shortCiruitEvaluationSemantics);
 		debugPrintGuards(separator.guards());
 
-		logger.info("Generalizing " + trainingPlans.size() + " plans...");
-		var learner = new PETI<StoreType, CmdType, GuardType>(problem.semantics(), separator, debugger, logger);
+
+		debugger.info("Generalizing " + trainingPlans.size() + " plans...");
+		var learner = new PETI<>(problem.semantics(), separator, debugger);
 		var learningTime = new Timer();
 		learningTime.start();
 		var learningResult = learner.infer(trainingPlans);
 		learningTime.stop();
-		logger.info("Automaton learning time: " + learningTime.toSeconds());
-		logger.info("Automaton learning result = " + learningResult.type);
+		debugger.info("Automaton learning time: " + learningTime.toSeconds());
+		debugger.info("Automaton learning result = " + learningResult.type);
 		if (learningResult.success()) {
 			var inferredAutomaton = learningResult.get();
 			var comparisonResult = compareOnTestExamples(exampleToPlan, inferredAutomaton, problem);
-			var synthesisResultStr = comparisonResult ? "success" : "failure";
-			logger.info("Synthesis result = " + synthesisResultStr);
+			var synthesisResultStr = comparisonResult ? "okay" : "failure";
+			debugger.info("Validation tests: " + synthesisResultStr);
 		}
 		return learningResult;
 	}
@@ -112,32 +101,36 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 					var interpreter = problem.interpreter().get();
 					optPlan = interpreter.genTrace(example.step(0).getT1(), maxTraceLength);
 				} else {
-					logger.info("WARNING: No reference program to complete " + example.name + " (skipped)!");
+					debugger.warning("No reference program to complete " + example.name + " (skipped)!");
 					optPlan = Optional.empty();
 				}
 			} else {
-				optPlan = PlanningUtils.exampleToPlan(problem.semantics(), planner, example, logger);
+				optPlan = PlanningUtils.exampleToPlan(problem.semantics(), planner, example, debugger);
 			}
 
 			if (optPlan.isPresent()) {
 				if (optPlan.get().lastState() instanceof ErrorStore) {
 					var errorStore = (ErrorStore) optPlan.get().lastState();
-					logger.info("Example " + example.name + " yields an error store (skipped): " + errorStore.message());
+					debugger.warning(
+							"Example " + example.name + " yields an error store (skipped): " + errorStore.message());
 					continue;
 				} else {
 					var plan = optPlan.get();
 					exampleToPlan.put(example, plan);
 					debugger.printPlan(plan, example.id);
-					logger.info("Found a plan for example " + example.name);
+					debugger.info("Found a plan for example " + example.name);
 				}
 			} else {
-				logger.info("No plan for example " + example.name);
+				debugger.info("No plan for example " + example.name);
 				continue;
 			}
 		}
 		return exampleToPlan;
 	}
 
+	/**
+	 * Tests the synthesized automaton on a set of validation tests.
+	 */
 	protected boolean compareOnTestExamples(Map<Example<StoreType, CmdType>, Trace<StoreType, CmdType>> exampleToPlan,
 			Automaton automaton, SynthesisProblem<StoreType, CmdType, GuardType> problem) {
 		var message = new StringBuilder();
@@ -152,7 +145,7 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 				continue;
 			}
 			++numOfTests;
-			var interpreter = new AutomatonInterpreter<StoreType, CmdType, GuardType>(automaton, problem.semantics());
+			var interpreter = new AutomatonInterpreter<>(automaton, problem.semantics());
 			var optAutomatonTrace = interpreter.genTrace(example.input(), maxTraceLength);
 			if (!optAutomatonTrace.isPresent() || !optAutomatonTrace.get().eqDeterministic(plan)) {
 				{
@@ -166,16 +159,17 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 					}
 				}
 				exampleToCompareResult.put(example, Boolean.FALSE);
-				message.append("Testing example " + example.name + ": fail" + System.lineSeparator());
+				message.append("Testing example ").append(example.name).append(": fail").append(System.lineSeparator());
 				result = false;
 			} else {
-				message.append("Testing example " + example.name + ": success" + System.lineSeparator());
+				message.append("Testing example ").append(example.name).append(": success").append(System.lineSeparator());
 				exampleToCompareResult.put(example, Boolean.TRUE);
 				++numOfTestsSucceeded;
 			}
 		}
-		message.append("Succeeded on " + numOfTestsSucceeded + " out of " + numOfTests + " test examples.");
+		message.append("Succeeded on ").append(numOfTestsSucceeded).append(" out of ").append(numOfTests).append(" test examples.");
 		debugger.addCodeFile("Synthesizer message", message.toString(), "Synthesis test results");
+		debugger.info("Succeeded on " + numOfTestsSucceeded + " out of " + numOfTests + " test examples.");
 		return result;
 	}
 
@@ -188,11 +182,11 @@ public class PETISynthesizer<StoreType extends Store, CmdType extends Cmd, Guard
 	protected void debugPrintGuards(Collection<GuardType> guards) {
 		final var maxGuardPrintCount = config.getInt("pexyn.printGuardCountBound", -1);
 		var txt = new StringBuilder();
-		txt.append("#guards=" + guards.size());
+		txt.append("#guards=").append(guards.size());
 		txt.append("\n=============\n");
 		var guardCounter = 0;
 		for (var guard : guards) {
-			txt.append(guard + "\n");
+			txt.append(guard).append("\n");
 			++guardCounter;
 			if (maxGuardPrintCount >= 0 && guardCounter > maxGuardPrintCount) {
 				txt.append("...");

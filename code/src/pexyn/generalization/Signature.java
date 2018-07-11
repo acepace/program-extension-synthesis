@@ -28,15 +28,16 @@ public class Signature {
 
 	@Override
 	public String toString() {
-		var result = new StringBuilder();
-		result.append("{length=" + length + ", " + lookaheads + "}");
-		return result.toString();
+		return ("{length=" + length + ", " + lookaheads + "}");
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (o == this) {
 			return true;
+		}
+		if (!(o instanceof Signature)) {
+			return false;
 		}
 		final Signature other = (Signature) o;
 		return this.length == other.length && this.lookaheads.equals(other.lookaheads);

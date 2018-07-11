@@ -42,7 +42,7 @@ public class JmStore implements Store {
 	 */
 	protected final Map<Obj, Map<Field, Val>> heap;
 
-	public static JmStore error(String description) {
+	public static JmStore error(Object... description) {
 		return new JmErrorStore(description);
 	}
 
@@ -106,7 +106,7 @@ public class JmStore implements Store {
 	 */
 	@Override
 	public boolean equals(Object o) {
-		if (o == null || !(o instanceof JmStore))
+		if (!(o instanceof JmStore))
 			return false;
 		if (this == o)
 			return true;
@@ -222,7 +222,7 @@ public class JmStore implements Store {
 	 * Returns the integer value of the given variable or null if it is not
 	 * initialized.
 	 */
-	public IntVal eval(IntVar var) {
+	public IntVal eval(PrimitiveVar var) {
 		IntVal result = (IntVal) env.get(var);
 		return result;
 	}
@@ -230,7 +230,7 @@ public class JmStore implements Store {
 	/**
 	 * Returns the value stored in the given field of the given object.
 	 * 
-	 * @param var
+	 * @param obj
 	 *            An object.
 	 * @param field
 	 *            A field.
@@ -263,7 +263,7 @@ public class JmStore implements Store {
 		return (Obj) objFields.get(field);
 	}
 
-	public IntVal eval(Obj obj, IntField field) {
+	public IntVal eval(Obj obj, PrimitiveField field) {
 		assert obj != null;
 		Map<Field, Val> objFields = heap.get(obj);
 		return (IntVal) objFields.get(field);
@@ -322,7 +322,7 @@ public class JmStore implements Store {
 		return assign(eval(lref), field, v);
 	}
 
-	public JmStore assign(RefVar lref, IntField field, IntVar var) {
+	public JmStore assign(RefVar lref, PrimitiveField field, PrimitiveVar var) {
 		return assign(eval(lref), field, eval(var));
 	}
 
@@ -404,21 +404,25 @@ public class JmStore implements Store {
 	 *
 	 */
 	public static class JmErrorStore extends JmStore implements ErrorStore {
-		public final String description;
+		public final Object[] description;
 
-		protected JmErrorStore(String description) {
+		protected JmErrorStore(Object... description) {
 			super();
 			this.description = description;
 		}
 
 		@Override
 		public String message() {
-			return description;
+			StringBuilder result = new StringBuilder();
+			for (var part : description) {
+				result.append(part.toString());
+			}
+			return result.toString();
 		}
 
 		@Override
 		public String toString() {
-			return "error(\"" + description + "\")";
+			return "error(\"" + message() + "\")";
 		}
 
 		@Override
@@ -457,7 +461,7 @@ public class JmStore implements Store {
 		}
 
 		@Override
-		public IntVal eval(IntVar var) {
+		public IntVal eval(PrimitiveVar var) {
 			throw new Error("Illegal access to error store!");
 		}
 
@@ -477,7 +481,7 @@ public class JmStore implements Store {
 		}
 
 		@Override
-		public IntVal eval(Obj obj, IntField field) {
+		public IntVal eval(Obj obj, PrimitiveField field) {
 			throw new Error("Illegal access to error store!");
 		}
 
@@ -502,7 +506,7 @@ public class JmStore implements Store {
 		}
 
 		@Override
-		public JmStore assign(RefVar lref, IntField field, IntVar var) {
+		public JmStore assign(RefVar lref, PrimitiveField field, PrimitiveVar var) {
 			throw new Error("Illegal access to error store!");
 		}
 

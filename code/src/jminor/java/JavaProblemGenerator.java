@@ -65,8 +65,7 @@ public class JavaProblemGenerator {
 				if (ReflectionUtils.fieldExists(output, RET_PARAM))
 					output.setParam(RET_PARAM, resultObj);
 				JmStore outputState = heapWalker.walk(output);
-				HashSet<Obj> freeObjects = new HashSet<>();
-				freeObjects.addAll(outputState.getObjects());
+				HashSet<Obj> freeObjects = new HashSet<>(outputState.getObjects());
 				freeObjects.removeAll(inputState.getObjects());
 				inputState.addFreeObjects(freeObjects);
 

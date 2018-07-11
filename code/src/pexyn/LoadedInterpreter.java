@@ -31,7 +31,7 @@ public interface LoadedInterpreter<StoreType extends Store, CmdType extends Cmd,
 	 * @return The output value or empty if the maximal number of steps has been
 	 *         exceeded.
 	 */
-	public Optional<StoreType> run(StoreType input, int maxSteps);
+    Optional<StoreType> run(StoreType input, int maxSteps);
 
 	/**
 	 * Applies the interpreter to the given input state and returns the resulting
@@ -45,5 +45,5 @@ public interface LoadedInterpreter<StoreType extends Store, CmdType extends Cmd,
 	 * @return The resulting trace or empty if the maximal number of steps has been
 	 *         exceeded.
 	 */
-	public Optional<Trace<StoreType, CmdType>> genTrace(StoreType input, int maxSteps);
+    Optional<Trace<StoreType, CmdType>> genTrace(StoreType input, int maxSteps);
 }

@@ -31,11 +31,11 @@ public interface Planner<StateType, ActionType> extends Searcher<StateType, Acti
 	 *            If a plan is found, it is appended to this one.
 	 * @return The result of the search.
 	 */
-	public SearchResultType findPlan(StateType input, Predicate<StateType> goalTest,
-			Trace<StateType, ActionType> addToPlan);
+    SearchResultType findPlan(StateType input, Predicate<StateType> goalTest,
+                              Trace<StateType, ActionType> addToPlan);
 
 	@Override
-	public default SearchResult<StateType> findState(StateType input, Predicate<StateType> goalTest) {
+    default SearchResult<StateType> findState(StateType input, Predicate<StateType> goalTest) {
 		Trace<StateType, ActionType> plan = new ArrayListTrace<>(input);
 		SearchResultType result = findPlan(input, goalTest, plan);
 		switch (result) {

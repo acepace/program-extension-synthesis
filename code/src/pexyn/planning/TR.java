@@ -18,17 +18,17 @@ public interface TR<StateType, ActionType> {
 	/**
 	 * A convenient value for the maximum possible cost.
 	 */
-	public static final float MAX_COST = Float.MAX_VALUE;
+    float MAX_COST = Float.MAX_VALUE;
 
 	/**
 	 * Returns the set of actions that are enabled for the given state.
 	 */
-	public Collection<ActionType> enabledActions(StateType state);
+    Collection<ActionType> enabledActions(StateType state);
 
 	/**
 	 * Returns an iterator of the set of enabled actions.
 	 */
-	public default Iterator<ActionType> enabledActionsIterator(StateType state) {
+	default Iterator<ActionType> enabledActionsIterator(StateType state) {
 		return enabledActions(state).iterator();
 	}
 
@@ -36,19 +36,19 @@ public interface TR<StateType, ActionType> {
 	 * Returns the cost of taking the transition from the source state to the
 	 * destination state with the given action.
 	 */
-	public float transitionCost(StateType src, ActionType action, StateType dst);
+    float transitionCost(StateType src, ActionType action, StateType dst);
 
 	/**
 	 * Applies the given action to the given state and returns the resulting
 	 * (possibly empty) collection of states.
 	 */
-	public Collection<StateType> apply(StateType state, ActionType action);
+    Collection<StateType> apply(StateType state, ActionType action);
 
 	/**
 	 * Returns the maximal cost of taking a transition from the source state to any
 	 * destination state with the given action.
 	 */
-	public default float actionCost(StateType src, ActionType action) {
+	default float actionCost(StateType src, ActionType action) {
 		float result = 0;
 		for (StateType dst : apply(src, action)) {
 			result = Math.max(result, transitionCost(src, action, dst));
@@ -60,7 +60,7 @@ public interface TR<StateType, ActionType> {
 	 * Returns a lower bound on the cost of any path from the given state to a goal
 	 * state.
 	 */
-	public default float estimateDistToGoal(StateType state) {
+	default float estimateDistToGoal(StateType state) {
 		return 0;
 	}
 }

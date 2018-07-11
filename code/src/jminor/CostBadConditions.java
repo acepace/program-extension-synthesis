@@ -39,17 +39,14 @@ public class CostBadConditions implements CostFun {
 	}
 
 	protected boolean deepDeref(Node op) {
-		if (op instanceof DerefExpr && ((DerefExpr) op).depth() > 3)
-			return true;
-		return false;
+		return op instanceof DerefExpr && ((DerefExpr) op).depth() > 3;
 	}
 
 	protected boolean trivialEq(Node op) {
 		if (op instanceof EqExpr) {
 			EqExpr oeq = (EqExpr) op;
 			if (!(oeq.getLhs() instanceof Nonterminal) && !(oeq.getRhs() instanceof Nonterminal)) {
-				if (Renderer.render(oeq.getLhs()).equals(Renderer.render(oeq.getRhs())))
-					return true;
+				return Renderer.render(oeq.getLhs()).equals(Renderer.render(oeq.getRhs()));
 			}
 		}
 		return false;
@@ -59,8 +56,7 @@ public class CostBadConditions implements CostFun {
 		if (op instanceof LtExpr) {
 			LtExpr oeq = (LtExpr) op;
 			if (!(oeq.getLhs() instanceof Nonterminal) && !(oeq.getRhs() instanceof Nonterminal)) {
-				if (Renderer.render(oeq.getLhs()).equals(Renderer.render(oeq.getRhs())))
-					return true;
+				return Renderer.render(oeq.getLhs()).equals(Renderer.render(oeq.getRhs()));
 			}
 		}
 		return false;
@@ -69,9 +65,7 @@ public class CostBadConditions implements CostFun {
 	protected boolean doubleNegation(Node op) {
 		if (op instanceof NotExpr) {
 			NotExpr on = (NotExpr) op;
-			if (on.getSub() instanceof NotExpr) {
-				return true;
-			}
+			return on.getSub() instanceof NotExpr;
 		}
 		return false;
 	}

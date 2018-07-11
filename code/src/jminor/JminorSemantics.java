@@ -19,7 +19,7 @@ import bgu.cs.util.rel.Rel2;
 import bgu.cs.util.treeGrammar.CostSize;
 import bgu.cs.util.treeGrammar.Node;
 import jminor.Var.VarRole;
-import pexyn.Semantics;
+import pexyn.StructuredSemantics;
 import pexyn.Trace;
 
 /**
@@ -27,7 +27,7 @@ import pexyn.Trace;
  * 
  * @author romanm
  */
-public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
+public class JminorSemantics implements StructuredSemantics<JmStore, Stmt, BoolExpr> {
 	public final Set<Field> fields = new LinkedHashSet<>();
 
 	/**
@@ -45,7 +45,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 	public final Collection<RefType> refTypes;
 	public final Collection<Type> types = new LinkedHashSet<>();
 
-	public final List<IntVar> intVars = new ArrayList<>();
+	public final List<PrimitiveVar> intVars = new ArrayList<>();
 
 	public final Rel2<Type, Var> typeToVar = new HashRel2<>();
 
@@ -135,8 +135,8 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 					refTemps.add(refVar);
 				}
 			} else {
-				assert v instanceof IntVar;
-				var intVar = (IntVar) v;
+				assert v instanceof PrimitiveVar;
+				var intVar = (PrimitiveVar) v;
 				intVars.add(intVar);
 			}
 		}
@@ -173,7 +173,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 			for (Field f : lhs.getType().fields) {
 				if (f instanceof RefField) {
 					// lhs.f = null
-					result.add(new AssignStmt(new DerefExpr(new VarExpr(lhs), (RefField) f), NullExpr.v));
+					result.add(new AssignStmt(new DerefExpr(new VarExpr(lhs), f), NullExpr.v));
 				}
 				for (Var rhs : typeToVar.select1(f.dstType)) {
 					// lhs.f = rhs
@@ -261,7 +261,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 		result.addAll(doubleOrPosNeg);
 
 		var sizeFun = new CostSize();
-		Collections.sort(result, (e1, e2) -> {
+		result.sort((e1, e2) -> {
 			var diff = sizeFun.apply(e1) - sizeFun.apply(e2);
 			return (int) diff;
 		});
@@ -341,6 +341,26 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 		return result;
 	}
 
+	protected void addBasicBooleanGuards(List<Trace<JmStore, Stmt>> plans, List<BoolExpr> result) {
+		for (final var domVar : vars) {
+			if (domVar.getType() == BooleanType.v) {
+				result.add(new EqExpr(new VarExpr(domVar), new ValExpr(BooleanVal.TRUE)));
+			}
+		}
+
+		for (final var domVar : vars) {
+			if (domVar instanceof RefVar) {
+				RefVar refVar = (RefVar) domVar;
+				RefType refType = refVar.getType();
+				for (var field : refType.fields) {
+					if (field.dstType == BooleanType.v) {
+						result.add(new EqExpr(new DerefExpr(new VarExpr(domVar), field), new ValExpr(BooleanVal.TRUE)));
+					}
+				}
+			}
+		}
+	}
+
 	protected void addBasicIntGuards(List<Trace<JmStore, Stmt>> plans, List<BoolExpr> result) {
 		// Collect all of the integers constants into a single set.
 		final var storeVals = collectIntValsFromStores(plans);
@@ -368,21 +388,20 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 		// storeVals.add(max);
 		storeVals.add(new IntVal(0));
 		storeVals.add(new IntVal(1));
-		final var intVals = new HashSet<IntVal>(storeVals);
+		final var intVals = new HashSet<>(storeVals);
 		intVals.addAll(stmtVals);
 
 		final var intExprs = new ArrayList<Expr>();
 		// Add variables and variable-field-dereference expressions as basic
 		// expressions.
 		for (final var domVar : vars) {
-			if (domVar instanceof IntVar) {
+			if (domVar.getType() == IntType.v) {
 				intExprs.add(new VarExpr(domVar));
-			} else {
-				assert domVar instanceof RefVar;
+			} else if (domVar instanceof RefVar) {
 				RefVar refVar = (RefVar) domVar;
 				RefType refType = refVar.getType();
 				for (var field : refType.fields) {
-					if (field instanceof IntField) {
+					if (field.dstType == IntType.v) {
 						intExprs.add(new DerefExpr(new VarExpr(domVar), field));
 					}
 				}
@@ -494,6 +513,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 	public List<BoolExpr> generateBasicGuards(List<Trace<JmStore, Stmt>> plans) {
 		final var result = new ArrayList<BoolExpr>();
 		addBasicIntGuards(plans, result);
+		addBasicBooleanGuards(plans, result);
 		addBasicRefGuards(plans, result);
 
 		Collections.sort(result, (e1, e2) -> {
@@ -537,6 +557,16 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 	@Override
 	public Stmt sequence(Cmd first, Cmd second) {
 		return new SeqStmt((Stmt) first, (Stmt) second);
+	}
+
+	@Override
+	public Stmt condition(Guard cond, Cmd first, Cmd second) {
+		return new IfStmt((BoolExpr) cond, (Stmt) first, (Stmt) second);
+	}
+
+	@Override
+	public Stmt loop(Guard cond, Cmd body) {
+		return new WhileStmt((BoolExpr) cond, (Stmt) body);
 	}
 
 	/**
@@ -637,7 +667,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 			result = 1;
 		}
 
-		public void visit(IntField n) {
+		public void visit(PrimitiveField n) {
 			result = 1;
 		}
 
@@ -649,7 +679,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 			result = 1;
 		}
 
-		public void visit(IntVar n) {
+		public void visit(PrimitiveVar n) {
 			result = 1;
 		}
 
@@ -658,7 +688,7 @@ public class JminorSemantics implements Semantics<JmStore, Stmt, BoolExpr> {
 		}
 
 		public void visit(ValExpr n) {
-			result = 1.2f;
+			result = 1f;
 		}
 
 		private void evalTree(Node n) {
