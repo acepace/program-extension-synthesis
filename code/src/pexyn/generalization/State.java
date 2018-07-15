@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import pexyn.Semantics;
 import pexyn.Semantics.Cmd;
 import pexyn.Semantics.Store;
 
@@ -19,6 +20,8 @@ import pexyn.Semantics.Store;
 public class State {
 	public final String id;
 	private Set<TracePoint> points = new HashSet<>();
+	public Set<Semantics.Guard> requirements = new HashSet<>();
+	public Set<Semantics.Guard> assertions = new HashSet<>();
 
 	/**
 	 * Partitions the values in the set of trace points relative to their next
