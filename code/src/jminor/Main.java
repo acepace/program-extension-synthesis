@@ -115,7 +115,8 @@ public class Main {
                 //analysis before compression because then we lose the data
                 if (config.getBoolean("pexyn.collectAssertions", false)) {
                     var analyser = new DafnyAnalyser(problem, automaton, config, debugger);
-                    analyser.collectAssertions();
+                    analyser.analyseAutomaton();
+                    automaton = analyser.getGuardedAutomaton();
                 }
                 if (config.getBoolean("pexyn.structureResultAutomaton", false)) {
                     new AutomatonToStructuredCmd<>(
