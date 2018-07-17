@@ -2,15 +2,17 @@ package jminor.analyser;
 
 import bgu.cs.util.FileUtils;
 import bgu.cs.util.STGLoader;
-import bgu.cs.util.treeGrammar.Node;
+import bgu.cs.util.graph.HashMultiGraph;
 import jminor.*;
 import jminor.codegen.AutomatonCodegen;
 import jminor.codegen.DafnySemanticsRenderer;
+import jminor.codegen.JavaVar;
 import jminor.codegen.SemanticsRenderer;
 import org.apache.commons.configuration2.Configuration;
 import org.stringtemplate.v4.ST;
 import pexyn.GPDebugger;
 import pexyn.Semantics;
+import pexyn.generalization.Action;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.State;
 
@@ -61,7 +63,7 @@ public class DafnyAnalyser {
     }
 
 
-    private Set<Semantics.Guard> collectMethodAssertions(Method method) {
+    private Set<Semantics.Guard> collectValidMethodAssertions(Method method) {
         debugger.info("Collecting assertions for method " + method.getMethodName());
         String fileText = method.toString();
         Set<Semantics.Guard> methodFailedGuards = new HashSet<>();
@@ -69,14 +71,11 @@ public class DafnyAnalyser {
         try {
             FileUtils.stringToFile(fileText, fileName);
             String[] dafnyResults = DafnyRunner.runDafny(config, fileName);
-            if (dafnyResults.length == 0) {
-                //all went ok, not sure what to do then :)
-            }
             //we have errors, extract and append to method
             for (String assertString : dafnyResults) {
-                var lineNum = Integer.valueOf(assertString.substring(assertString.indexOf("(")+1,assertString.indexOf(",")));
-                String assertLine = fileText.split("\n")[lineNum+1];
-                String assertNum = assertLine.substring(assertLine.indexOf("//")+2).replaceAll("\\s+","");
+                var lineNum = Integer.valueOf(assertString.substring(assertString.indexOf("(") + 1, assertString.indexOf(",")));
+                String assertLine = fileText.split("\n")[lineNum - 1];
+                String assertNum = assertLine.substring(assertLine.indexOf("//") + 2).replaceAll("\\s+", "");
                 int assertNumber = Integer.valueOf(assertNum);
                 var failedGuard = idToGuard.get(assertNumber);
                 methodFailedGuards.add(failedGuard);
@@ -86,17 +85,61 @@ public class DafnyAnalyser {
         } catch (IOException e) {
             e.printStackTrace(); //total failure
         }
-        return methodFailedGuards;
+        var toRet = new HashSet<>(method.post);
+        toRet.removeAll(methodFailedGuards);
+        return toRet;
 
     }
 
-    public void collectAssertions() {
-        currentMethods = getMethodsInit();
-        for (var method : currentMethods) {
-            Set<Semantics.Guard> methodFailedGuards = collectMethodAssertions(method);
+    public void analyseAutomaton() {
+        /*
+        Start from initial state
+            For each state, check what assertions work in the end, add them.
+                For each edge successor edge, add the same checks, adding the now asserts as requirements
+                in case of loops do a JOIN operation
+
+         */
+        Queue<State> worklist = new LinkedList<>(program.getNodes());
+        debugger.info("Starting point iteration");
+
+        while (!worklist.isEmpty()) {
+            var currentState = worklist.remove();
+            for (var edge : program.succEdges(currentState)) {
+
+                //currently handle only assignments
+                if (!(edge.label.update instanceof AssignStmt)) {
+                    debugger.warning("Edge " + edge.toString() + "Missing an update" + edge.label.update);
+                    continue;
+                }
+                //TOO handle loops somehow
+                boolean changed = handleEdge(currentState, edge);
+                if (changed) {
+                    if (!worklist.contains(edge.dst)) {
+                        worklist.add(edge.dst);
+                    }
+                    if (!worklist.contains(edge.src)) {
+                        worklist.add(edge.src);
+                    }
+                }
+            }
         }
+        debugger.info("Fixed point iteration ends");
 
+    }
 
+    private boolean handleEdge(State currentState, HashMultiGraph<State, Action>.HashEdge edge) {
+        var command = (AssignStmt) edge.label.update;
+        var dst = edge.dst;
+        var method = new Method();
+        method.src = currentState;
+        method.dst = dst;
+        method.update = command;
+        method.pre = new HashSet<>(currentState.assertions);
+        method.post = new HashSet<>(guards);
+        Set<Semantics.Guard> validGuards = collectValidMethodAssertions(method);
+        currentState.assertions.addAll(validGuards);
+        dst.requirements.addAll(validGuards);
+        return (!method.pre.equals(validGuards));
     }
 
     private Collection<Method> getMethodsInit() {
@@ -131,9 +174,7 @@ public class DafnyAnalyser {
         return program.clone();
     }
 
-
-
-    private class Method {
+    class Method {
         State src;
         State dst;
         AssignStmt update;
@@ -158,17 +199,23 @@ public class DafnyAnalyser {
             classFileST.add("className", className);
             classFileST.add("methodName", getMethodName());
 
+            List<JavaVar> methodArgs = new ArrayList<>();
+
             for (var inputArg : problem.inputArgs) {
-                classFileST.add("args", new AutomatonCodegen.JavaVar(inputArg));
+                var javaVar = new JavaVar(inputArg);
+                methodArgs.add(javaVar);
+                classFileST.add("args", javaVar);
             }
             for (var local : problem.temps) {
-                classFileST.add("args", new AutomatonCodegen.JavaVar(local));
+                var javaVar = new JavaVar(local);
+                methodArgs.add(javaVar);
+                classFileST.add("args", javaVar);
             }
             for (var outArg : problem.outputArgs) {
-                classFileST.add("args", new AutomatonCodegen.JavaVar(outArg));
+                var javaVar = new JavaVar(outArg);
+                methodArgs.add(javaVar);
+                classFileST.add("args", javaVar);
             }
-
-            List<Node> methodArgs = update.getRhs().getArgs(); //get assignment args
 
             /*for (var inputArg : methodArgs) {
                 AutomatonCodegen.JavaVar arg = null;
@@ -189,14 +236,9 @@ public class DafnyAnalyser {
             var lhs = update.getLhs().getArgs().get(0);
             var realArg = ((PrimitiveVar) lhs);
 
-            if (methodArgs.stream().noneMatch(methodArg -> {
-                if (methodArg instanceof VarExpr) {
-                    return ((VarExpr) methodArg).getVar().equals(lhs);
-                } else {
-                    return methodArg.equals(lhs);
-                }
-            })) {
-                var lhsVar = new AutomatonCodegen.JavaVar(realArg);
+            if (methodArgs.stream().noneMatch(methodArg ->
+                    methodArg.name.equals(realArg.name))) {
+                var lhsVar = new JavaVar(realArg);
                 classFileST.add("locals", lhsVar);
             } else { //already existed
                 classFileST.add("init_code", "var " + realArg.getName() + " := " + realArg.getName() + ";");
@@ -206,11 +248,11 @@ public class DafnyAnalyser {
             classFileST.add("stateCodes", renderer.renderCmd(update));
             //now time to add in pre/post
             for (var preCond : pre) {
-                var preAssert = "requires " + renderer.renderGuard(preCond) + ";" + "//" + guardToId.get(preCond).toString() ;
+                var preAssert = "requires " + renderer.renderGuard(preCond) + ";" + "//" + guardToId.get(preCond).toString();
                 classFileST.add("requireStmts", preAssert);
             }
             for (var postCond : post) {
-                var preAssert = "assert " + renderer.renderGuard(postCond) + ";" + "//" + guardToId.get(postCond).toString() ;
+                var preAssert = "assert " + renderer.renderGuard(postCond) + ";" + "//" + guardToId.get(postCond).toString();
                 classFileST.add("postStmts", preAssert);
             }
             return classFileST;
