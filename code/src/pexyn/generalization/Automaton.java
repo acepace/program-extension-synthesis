@@ -1,17 +1,12 @@
 package pexyn.generalization;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Optional;
-
 import bgu.cs.util.Pair;
 import bgu.cs.util.graph.HashMultiGraph;
 import bgu.cs.util.rel.HashRel2;
 import pexyn.Semantics;
 import pexyn.Semantics.Cmd;
+
+import java.util.*;
 
 /**
  * A program automaton.
@@ -71,8 +66,10 @@ public class Automaton extends HashMultiGraph<State, Action> {
                 newState = result.getFinal();
             } else {
                 newState = new State(oldState.id);
+
             }
             newStates.add(newState);
+
             newState.addAllTracePoints(oldState.getPoints());
             result.addNode(newState);
             oldStateToNewState.put(oldState, newState);
@@ -84,6 +81,10 @@ public class Automaton extends HashMultiGraph<State, Action> {
                 var newSrc = oldStateToNewState.get(transition.getSrc());
                 var newDst = oldStateToNewState.get(transition.getDst());
                 var newAction = transition.getLabel().clone();
+                var oldAsserts = transition.getSrc().assertions;
+                var oldRequirements = transition.getDst().requirements;
+                newSrc.addAssertions(oldAsserts);
+                newDst.addRequirements(oldRequirements);
                 result.addEdge(newSrc, newDst, newAction);
             }
         }
