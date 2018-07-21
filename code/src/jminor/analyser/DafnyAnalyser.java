@@ -38,7 +38,6 @@ public class DafnyAnalyser {
     private Map<Integer, Semantics.Guard> idToGuard;
     private Map<Semantics.Guard, Integer> guardToId;
     private Collection<Semantics.Cmd> cmds;
-    private Collection<Method> currentMethods;
     private SemanticsRenderer renderer;
     private STGLoader templates;
 
@@ -99,9 +98,20 @@ public class DafnyAnalyser {
                 in case of loops do a JOIN operation
 
          */
+        initializeAutomaton();
         Queue<State> worklist = new LinkedList<>(program.getNodes());
         debugger.info("Starting point iteration");
 
+        /*
+        This iterates over every node and every transition, going roughly
+            while change do
+              for each transition q-stmt->q' do
+                //this is in handleEdge
+                post := DafnyPost(stmt, assertion(q))
+                assertion(q') :=  assertion(q') intersection post
+              od
+            od
+         */
         while (!worklist.isEmpty()) {
             var currentState = worklist.remove();
             for (var edge : program.succEdges(currentState)) {
@@ -128,45 +138,40 @@ public class DafnyAnalyser {
     }
 
     private boolean handleEdge(State currentState, HashMultiGraph<State, Action>.HashEdge edge) {
+        /*
+        post := DafnyPost(stmt, assertion(q))
+        assertion(q') :=  assertion(q') intersection post
+         */
         var command = (AssignStmt) edge.label.update;
         var dst = edge.dst;
         var method = new Method();
         method.src = currentState;
         method.dst = dst;
         method.update = command;
-        method.pre = new HashSet<>(currentState.assertions);
-        method.post = new HashSet<>(guards);
+        //method.pre = new HashSet<>(currentState.assertions);
+        method.post = new HashSet<>(dst.assertions);
         Set<Semantics.Guard> validGuards = collectValidMethodAssertions(method);
-        currentState.assertions.addAll(validGuards);
-        dst.requirements.addAll(validGuards);
-        return (!method.pre.equals(validGuards));
+        //currentState.assertions.addAll(validGuards);
+        dst.assertions.retainAll(validGuards);
+        return (!method.post.equals(validGuards));
     }
 
-    private Collection<Method> getMethodsInit() {
-        //Generate all the methods starting off
-        Collection<Method> methods = new HashSet<>();
-
+    private void initializeAutomaton() {
+        /*
+        foreach assertion. we just do this by adding all assertions.
+        for each location q do
+          if q = initial
+            set assertion(q) := true
+          else
+            set assertion(q) := false
+         */
         Collection<State> states = program.getNodes();
         for (State state : states) {
-            //edges out
-            for (var edge : program.succEdges(state)) {
-                //currently handle only assignments
-                if (!(edge.label.update instanceof AssignStmt)) {
-                    continue;
-                }
-                var command = (AssignStmt) edge.label.update;
-                var dst = edge.dst;
-                var method = new Method();
-                method.src = state;
-                method.dst = dst;
-                method.update = command;
-                method.pre = new HashSet<>(guards);
-                method.post = new HashSet<>(guards);
-                methods.add(method);
+            if (state == program.getInitial()) {
+                continue;
             }
+            state.assertions = new HashSet<>(this.guards);
         }
-
-        return methods;
     }
 
 
@@ -178,8 +183,8 @@ public class DafnyAnalyser {
         State src;
         State dst;
         AssignStmt update;
-        Collection<Semantics.Guard> pre;
-        Collection<Semantics.Guard> post;
+        Collection<Semantics.Guard> pre = new HashSet<>();
+        Collection<Semantics.Guard> post = new HashSet<>();
 
 
         String getMethodName() {
