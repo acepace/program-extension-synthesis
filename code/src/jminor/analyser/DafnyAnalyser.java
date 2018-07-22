@@ -11,10 +11,13 @@ import jminor.codegen.SemanticsRenderer;
 import org.apache.commons.configuration2.Configuration;
 import org.stringtemplate.v4.ST;
 import pexyn.GPDebugger;
+import pexyn.PETISynthesizer;
 import pexyn.Semantics;
+import pexyn.Trace;
 import pexyn.generalization.Action;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.State;
+import pexyn.planning.AStar;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,24 +37,28 @@ public class DafnyAnalyser {
     private Automaton program;
     private Configuration config;
     private GPDebugger<JmStore, Stmt, BoolExpr> debugger;
-    private Collection<Semantics.Guard> guards;
-    private Map<Integer, Semantics.Guard> idToGuard;
-    private Map<Semantics.Guard, Integer> guardToId;
+    private Collection<BoolExpr> guards;
+    private Map<Integer, BoolExpr> idToGuard;
+    private Map<BoolExpr, Integer> guardToId;
     private Collection<Semantics.Cmd> cmds;
     private SemanticsRenderer renderer;
     private STGLoader templates;
 
-    public DafnyAnalyser(JminorProblem problem, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
+    public DafnyAnalyser(JminorProblem problem, PETISynthesizer<JmStore, Stmt,BoolExpr> planner, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
         this.debugger = debugger;
         this.problem = problem;
         this.program = automaton;
-        this.guards = automaton.getGuards();
+        //Take from problem semantics the guards
+
         this.cmds = automaton.getCommands();
         this.config = config;
+        var newGuards = genGuards(planner);
+        automaton.getGuards().forEach(guard -> newGuards.add((BoolExpr)guard));
+        this.guards = newGuards;
         this.idToGuard = new HashMap<>(guards.size());
         this.guardToId = new HashMap<>(guards.size());
         int i = 0;
-        for (Semantics.Guard guard : guards) {
+        for (BoolExpr guard : guards) {
             idToGuard.put(i, guard);
             guardToId.put(guard, i);
             i++;
@@ -61,8 +68,20 @@ public class DafnyAnalyser {
         templates = new STGLoader(AutomatonCodegen.class, "DafnyAutomatonCodegen.stg");
     }
 
+    private List<BoolExpr> genGuards(PETISynthesizer<JmStore, Stmt,BoolExpr> planner) {
+        var exampleToPlan = planner.genPlans(problem);
+        var trainingPlans = new ArrayList<Trace<JmStore, Stmt>>();
+        exampleToPlan.forEach((example, plan) -> {
+            if (!example.isTest) {
+                trainingPlans.add(plan);
+            }
+        });
+        var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
+        return basicGuards;
+    }
 
-    private Set<Semantics.Guard> collectValidMethodAssertions(Method method) {
+
+    private Set<BoolExpr> collectValidMethodAssertions(Method method) {
         debugger.info("Collecting assertions for method " + method.getMethodName());
         String fileText = method.toString();
         Set<Semantics.Guard> methodFailedGuards = new HashSet<>();
@@ -121,7 +140,6 @@ public class DafnyAnalyser {
                     debugger.warning("Edge " + edge.toString() + "Missing an update" + edge.label.update);
                     continue;
                 }
-                //TOO handle loops somehow
                 boolean changed = handleEdge(currentState, edge);
                 if (changed) {
                     if (!worklist.contains(edge.dst)) {
@@ -148,9 +166,12 @@ public class DafnyAnalyser {
         method.src = currentState;
         method.dst = dst;
         method.update = command;
+        //Add guard if present
+        //Warning, WTH
+        method.pre.add((BoolExpr)edge.label.guard());
         //method.pre = new HashSet<>(currentState.assertions);
         method.post = new HashSet<>(dst.assertions);
-        Set<Semantics.Guard> validGuards = collectValidMethodAssertions(method);
+        Set<BoolExpr> validGuards = collectValidMethodAssertions(method);
         //currentState.assertions.addAll(validGuards);
         dst.assertions.retainAll(validGuards);
         return (!method.post.equals(validGuards));
@@ -183,8 +204,8 @@ public class DafnyAnalyser {
         State src;
         State dst;
         AssignStmt update;
-        Collection<Semantics.Guard> pre = new HashSet<>();
-        Collection<Semantics.Guard> post = new HashSet<>();
+        Collection<BoolExpr> pre = new HashSet<>();
+        Collection<BoolExpr> post = new HashSet<>();
 
 
         String getMethodName() {

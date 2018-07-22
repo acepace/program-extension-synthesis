@@ -1,25 +1,24 @@
 package jminor;
 
+import bgu.cs.util.Timer;
+import jminor.analyser.DafnyAnalyser;
+import jminor.ast.ASTProblem;
+import jminor.ast.JminorParser;
+import jminor.ast.ProblemCompiler;
+import jminor.codegen.AutomatonCodegen;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import pexyn.PETISynthesizer;
+import pexyn.StructuredSemantics;
+import pexyn.generalization.AutomatonToStructuredCmd;
+import pexyn.planning.AStar;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
-
-import jminor.analyser.DafnyAnalyser;
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.builder.fluent.Configurations;
-import org.apache.commons.configuration2.ex.ConfigurationException;
-
-import bgu.cs.util.Timer;
-import jminor.ast.ASTProblem;
-import jminor.ast.JminorParser;
-import jminor.ast.ProblemCompiler;
-import jminor.codegen.AutomatonCodegen;
-import pexyn.PETISynthesizer;
-import pexyn.StructuredSemantics;
-import pexyn.generalization.AutomatonToStructuredCmd;
-import pexyn.planning.AStar;
 
 /**
  * Synthesizes programs from a heap-format specification file.
@@ -103,7 +102,9 @@ public class Main {
             debugger.addCodeFile("problem.txt", problem.toString(), "Specification");
             debugger.printExamples(problem.examples);
             synthesisTime.start();
+
             var planner = new AStar<>(new BasicJminorTR(problem.semantics));
+
             var synthesizer = new PETISynthesizer<>(planner, config, debugger);
             var synthesisResult = synthesizer.synthesize(problem);
             if (synthesisResult.success()) {
@@ -114,7 +115,7 @@ public class Main {
                 var automaton = synthesisResult.get();
                 //analysis before compression because then we lose the data
                 if (config.getBoolean("pexyn.collectAssertions", false)) {
-                    var analyser = new DafnyAnalyser(problem, automaton, config, debugger);
+                    var analyser = new DafnyAnalyser(problem, synthesizer, automaton, config, debugger);
                     analyser.analyseAutomaton();
                     automaton = analyser.getGuardedAutomaton();
                 }

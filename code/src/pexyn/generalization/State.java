@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import jminor.BoolExpr;
 import pexyn.Semantics;
 import pexyn.Semantics.Cmd;
 import pexyn.Semantics.Store;
@@ -20,8 +21,8 @@ import pexyn.Semantics.Store;
 public class State {
 	public final String id;
 	private Set<TracePoint> points = new HashSet<>();
-	public Set<Semantics.Guard> requirements = new HashSet<>();
-	public Set<Semantics.Guard> assertions = new HashSet<>();
+	public Set<BoolExpr> requirements = new HashSet<>();
+	public Set<BoolExpr> assertions = new HashSet<>();
 
 	/**
 	 * Partitions the values in the set of trace points relative to their next
@@ -45,19 +46,19 @@ public class State {
 		}
 	}
 
-	public void addRequirement(Semantics.Guard requirement) {
+	public void addRequirement(BoolExpr requirement) {
 		this.requirements.add(requirement);
 	}
 
-	public void addRequirements(Set<Semantics.Guard> requirements){
+	public void addRequirements(Set<BoolExpr> requirements){
 		this.requirements.addAll(requirements);
 	}
 
-	public void addAssert(Semantics.Guard assertion) {
+	public void addAssert(BoolExpr assertion) {
 		this.assertions.add(assertion);
 	}
 
-	public void addAssertions(Set<Semantics.Guard> asserts) {
+	public void addAssertions(Set<BoolExpr> asserts) {
 		this.assertions.addAll(asserts);
 	}
 
