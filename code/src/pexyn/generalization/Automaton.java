@@ -324,6 +324,9 @@ public class Automaton extends HashMultiGraph<State, Action> {
         StringBuilder res = new StringBuilder();
         for (var state : states) {
             StringBuilder stateRes = new StringBuilder(String.format("ID %s: \n", state.toString()));
+            for (var dst : srccStates(state)) {
+                stateRes.append(String.format("\tEdge to %s\n", dst.toString()));
+            }
             for (var assertion : state.assertions) {
                 stateRes.append(String.format("\tAssert %s\n", assertion.toString()));
             }
