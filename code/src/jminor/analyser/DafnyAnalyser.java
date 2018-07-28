@@ -30,23 +30,21 @@ import java.util.*;
 */
 
 public class DafnyAnalyser {
-    private JminorProblem problem;
-    private Automaton program;
-    private Configuration config;
-    private GPDebugger<JmStore, Stmt, BoolExpr> debugger;
-    private Collection<Semantics.Guard> guards;
-    private Map<Integer, Semantics.Guard> idToGuard;
-    private Map<Semantics.Guard, Integer> guardToId;
-    private Collection<Semantics.Cmd> cmds;
-    private SemanticsRenderer renderer;
-    private STGLoader templates;
+    private final JminorProblem problem;
+    private final Automaton program;
+    private final Configuration config;
+    private final GPDebugger<JmStore, Stmt, BoolExpr> debugger;
+    private final Collection<Semantics.Guard> guards;
+    private final Map<Integer, Semantics.Guard> idToGuard;
+    private final Map<Semantics.Guard, Integer> guardToId;
+    private final SemanticsRenderer renderer;
+    private final STGLoader templates;
 
     public DafnyAnalyser(JminorProblem problem, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
         this.debugger = debugger;
         this.problem = problem;
         this.program = automaton;
         this.guards = automaton.getGuards();
-        this.cmds = automaton.getCommands();
         this.config = config;
         this.idToGuard = new HashMap<>(guards.size());
         this.guardToId = new HashMap<>(guards.size());
@@ -149,6 +147,7 @@ public class DafnyAnalyser {
         method.dst = dst;
         method.update = command;
         //method.pre = new HashSet<>(currentState.assertions);
+        method.pre.add(edge.label.guard());
         method.post = new HashSet<>(dst.assertions);
         Set<Semantics.Guard> validGuards = collectValidMethodAssertions(method);
         //currentState.assertions.addAll(validGuards);
@@ -183,7 +182,7 @@ public class DafnyAnalyser {
         State src;
         State dst;
         AssignStmt update;
-        Collection<Semantics.Guard> pre = new HashSet<>();
+        final Collection<Semantics.Guard> pre = new HashSet<>();
         Collection<Semantics.Guard> post = new HashSet<>();
 
 
