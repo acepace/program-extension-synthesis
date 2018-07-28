@@ -118,6 +118,8 @@ public class Main {
                     analyser.analyseAutomaton();
                     automaton = analyser.getGuardedAutomaton();
                 }
+                String safeAutomaton = automaton.toStringWithAsserts();
+                logger.info(safeAutomaton);
                 if (config.getBoolean("pexyn.structureResultAutomaton", false)) {
                     new AutomatonToStructuredCmd<>(
                             (StructuredSemantics<JmStore, Stmt, BoolExpr>) problem.semantics()).compress(automaton);
