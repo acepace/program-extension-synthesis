@@ -69,7 +69,7 @@ public class DTreeInferencer<ExampleType extends Store, LabelType extends Cmd, F
 	 *            The set of updates, which serve as the labels for the classifier.
 	 * @return A mapping from an update to the respective guard.
 	 */
-	protected Map<Cmd, ? extends Guard> generateAllClassifiers(Node root, Collection<Cmd> updates) {
+	public Map<Cmd, ? extends Guard> generateAllClassifiers(Node root, Collection<Cmd> updates) {
 		var result = new HashMap<Cmd, FeatureType>();
 		for (var update : updates) {
 			FeatureType guard = generateClassifierForLabel(root, update);

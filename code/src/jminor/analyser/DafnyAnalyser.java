@@ -3,6 +3,7 @@ package jminor.analyser;
 import bgu.cs.util.FileUtils;
 import bgu.cs.util.STGLoader;
 import bgu.cs.util.graph.HashMultiGraph;
+import bgu.cs.util.rel.HashRel2;
 import jminor.*;
 import jminor.codegen.AutomatonCodegen;
 import jminor.codegen.DafnySemanticsRenderer;
@@ -11,10 +12,14 @@ import jminor.codegen.SemanticsRenderer;
 import org.apache.commons.configuration2.Configuration;
 import org.stringtemplate.v4.ST;
 import pexyn.GPDebugger;
+import pexyn.PETISynthesizer;
 import pexyn.Semantics;
+import pexyn.Trace;
 import pexyn.generalization.Action;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.State;
+import pexyn.guardInference.ConditionInferencer;
+import pexyn.guardInference.DTreeInferencer;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,14 +45,17 @@ public class DafnyAnalyser {
     private final SemanticsRenderer renderer;
     private final STGLoader templates;
 
-    public DafnyAnalyser(JminorProblem problem, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
+    public DafnyAnalyser(JminorProblem problem, PETISynthesizer<JmStore, Stmt, BoolExpr> planner, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
         this.debugger = debugger;
         this.problem = problem;
         this.program = automaton;
-        this.guards = automaton.getGuards();
         this.config = config;
+        this.guards = automaton.getGuards();
+        this.guards.addAll(genGuards(planner));
+
         this.idToGuard = new HashMap<>(guards.size());
         this.guardToId = new HashMap<>(guards.size());
+
         int i = 0;
         for (Semantics.Guard guard : guards) {
             idToGuard.put(i, guard);
@@ -57,6 +65,41 @@ public class DafnyAnalyser {
 
         renderer = new DafnySemanticsRenderer();
         templates = new STGLoader(AutomatonCodegen.class, "DafnyAutomatonCodegen.stg");
+    }
+
+    private Collection<Semantics.Guard> genGuards(PETISynthesizer<JmStore, Stmt, BoolExpr> planner) {
+        var exampleToPlan = planner.genPlans(problem);
+        var trainingPlans = new ArrayList<Trace<JmStore, Stmt>>();
+        exampleToPlan.forEach((example, plan) -> {
+            if (!example.isTest) {
+                trainingPlans.add(plan);
+            }
+        });
+        var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
+        ConditionInferencer<JmStore, Stmt, BoolExpr> separator;
+        var shortCiruitEvaluationSemantics = config.getBoolean("pexyn.shortCiruitEvaluationSemantics", true);
+        separator = new DTreeInferencer<>(problem.semantics(), basicGuards,
+                shortCiruitEvaluationSemantics);
+
+        Collection<Semantics.Guard> additonalGuards = new HashSet<>();
+        for (var state : this.program.getNodes()) {
+            if (program.outDegree(state) <= 1)
+                continue;
+
+            var updateToValue = new HashRel2<Semantics.Cmd, Semantics.Store>();
+            state.updateToValues().forEach((update, values) -> {
+                for (var value : values) {
+                    updateToValue.add(update, value);
+                }
+            });
+            var optUpdateToGuard = separator.infer(updateToValue);
+            if (!optUpdateToGuard.isPresent()) {
+                continue;
+            }
+            var updateToGuard = optUpdateToGuard.get();
+            additonalGuards.addAll(updateToGuard.values());
+        }
+        return additonalGuards;
     }
 
 
@@ -192,7 +235,7 @@ public class DafnyAnalyser {
                     .replace("(", "").replace(")", "")
                     .replace(";", "")
                     .replace("-", "MIN").replace("+", "PL")
-                    .replace("*","TIMES").replace("/","DIV");
+                    .replace("*", "TIMES").replace("/", "DIV");
             return src.toString() + "_" + escapedUpdate + "_" + dst.toString();
         }
 
