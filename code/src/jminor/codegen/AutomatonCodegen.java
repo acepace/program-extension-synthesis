@@ -50,8 +50,7 @@ public class AutomatonCodegen {
 	public AutomatonCodegen(Automaton automaton, JminorProblem problem, Configuration config, JminorDebugger debugger,
 			Logger logger, String languageName, String fileSuffix, STGLoader templates, SemanticsRenderer semRenderer) {
 		this.automaton = automaton;
-		;
-		this.problem = problem;
+        this.problem = problem;
 		this.config = config;
 		this.debugger = debugger;
 		this.logger = logger;
