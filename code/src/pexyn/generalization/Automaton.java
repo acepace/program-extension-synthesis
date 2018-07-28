@@ -319,4 +319,17 @@ public class Automaton extends HashMultiGraph<State, Action> {
         return succs.keySet();
     }
 
+    public String toStringWithAsserts() {
+        var states = getStates();
+        StringBuilder res = new StringBuilder();
+        for (var state : states) {
+            StringBuilder stateRes = new StringBuilder(String.format("ID %s: \n", state.toString()));
+            for (var assertion : state.assertions) {
+                stateRes.append(String.format("\tAssert %s\n", assertion.toString()));
+            }
+            res.append(stateRes);
+        }
+        return res.toString();
+    }
+
 }
