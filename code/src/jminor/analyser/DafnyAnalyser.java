@@ -3,6 +3,7 @@ package jminor.analyser;
 import bgu.cs.util.FileUtils;
 import bgu.cs.util.STGLoader;
 import bgu.cs.util.graph.HashMultiGraph;
+import bgu.cs.util.rel.HashRel2;
 import jminor.*;
 import jminor.codegen.AutomatonCodegen;
 import jminor.codegen.DafnySemanticsRenderer;
@@ -11,16 +12,21 @@ import jminor.codegen.SemanticsRenderer;
 import org.apache.commons.configuration2.Configuration;
 import org.stringtemplate.v4.ST;
 import pexyn.GPDebugger;
+import pexyn.PETISynthesizer;
 import pexyn.Semantics;
+import pexyn.Trace;
 import pexyn.generalization.Action;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.State;
+import pexyn.guardInference.ConditionInferencer;
+import pexyn.guardInference.DTreeInferencer;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /*
@@ -39,13 +45,39 @@ public class DafnyAnalyser {
     private final Map<Semantics.Guard, Integer> guardToId;
     private final SemanticsRenderer renderer;
     private final STGLoader templates;
+    private final GuardSource guardState;
 
-    public DafnyAnalyser(JminorProblem problem, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger) {
+    public DafnyAnalyser(JminorProblem problem, PETISynthesizer<JmStore, Stmt, BoolExpr> synth, Automaton automaton, Configuration config, GPDebugger<JmStore, Stmt, BoolExpr> debugger, GuardSource guardSourceType) {
         this.debugger = debugger;
         this.problem = problem;
         this.program = automaton;
-        this.guards = automaton.getGuards();
+
         this.config = config;
+        renderer = new DafnySemanticsRenderer();
+        templates = new STGLoader(AutomatonCodegen.class, "DafnyAutomatonCodegen.stg");
+        guardState = guardSourceType;
+        switch (guardSourceType) {
+            case EXISTING_GUARDS: {
+                this.guards = automaton.getGuards();
+                break;
+            }
+            case ALL_CONDITIONS: {
+                this.guards = genAllGuards(synth);
+                automaton.getGuards().forEach(guard -> guards.add((BoolExpr)guard));
+                break;
+            }
+            case GUARDS_INFERENCE: {
+                this.guards = automaton.getGuards();
+                this.guards.addAll(genGuardInferenceGuards(synth));
+                break;
+            }
+            default: {
+                this.guards = new HashSet<>();
+                break;
+            }
+        }
+
+
         this.idToGuard = new HashMap<>(guards.size());
         this.guardToId = new HashMap<>(guards.size());
         int i = 0;
@@ -54,11 +86,47 @@ public class DafnyAnalyser {
             guardToId.put(guard, i);
             i++;
         }
-
-        renderer = new DafnySemanticsRenderer();
-        templates = new STGLoader(AutomatonCodegen.class, "DafnyAutomatonCodegen.stg");
     }
 
+    private Collection<Semantics.Guard> genAllGuards(PETISynthesizer<JmStore, Stmt, BoolExpr> synth) {
+        var exampleToPlan = synth.genPlans(problem);
+        var trainingPlans = new ArrayList<Trace<JmStore, Stmt>>();
+        exampleToPlan.forEach((example, plan) -> {
+            if (!example.isTest) {
+                trainingPlans.add(plan);
+            }
+        });
+        var basicGuards = problem.semantics().generateBasicGuards(trainingPlans);
+        return basicGuards.stream().map(x -> (Semantics.Guard) x).collect(Collectors.toList());
+    }
+
+    private Collection<Semantics.Guard> genGuardInferenceGuards(PETISynthesizer<JmStore, Stmt, BoolExpr> planner) {
+        Collection<Semantics.Guard> basicGuards = genAllGuards(planner);
+        boolean shortCiruitEvaluationSemantics = config.getBoolean("pexyn.shortCiruitEvaluationSemantics", true);
+        ConditionInferencer<JmStore, Stmt, BoolExpr> separator = new DTreeInferencer<>(problem.semantics(),
+                basicGuards.stream().map(x -> (BoolExpr) x).collect(Collectors.toList()), //Amazingly crappy hack
+                shortCiruitEvaluationSemantics);
+
+        Collection<Semantics.Guard> additionalGuards = new HashSet<>();
+        for (var state : this.program.getNodes()) {
+            if (program.outDegree(state) <= 1)
+                continue;
+
+            var updateToValue = new HashRel2<Semantics.Cmd, Semantics.Store>();
+            state.updateToValues().forEach((update, values) -> {
+                for (var value : values) {
+                    updateToValue.add(update, value);
+                }
+            });
+            var optUpdateToGuard = separator.infer(updateToValue);
+            if (!optUpdateToGuard.isPresent()) {
+                continue;
+            }
+            var updateToGuard = optUpdateToGuard.get();
+            additionalGuards.addAll(updateToGuard.values());
+        }
+        return additionalGuards;
+    }
 
     private Set<Semantics.Guard> collectValidMethodAssertions(Method method) {
         debugger.info("Collecting assertions for method " + method.getMethodName());
@@ -169,7 +237,11 @@ public class DafnyAnalyser {
             if (state == program.getInitial()) {
                 continue;
             }
-            state.assertions = new HashSet<>(this.guards);
+            //if (guardState != GuardSource.GUARDS_INFERENCE) {
+            state.assertions.addAll(this.guards);
+            //} else { //using guard inference
+
+            //}
         }
     }
 
@@ -182,7 +254,7 @@ public class DafnyAnalyser {
         State src;
         State dst;
         AssignStmt update;
-        final Collection<Semantics.Guard> pre = new HashSet<>();
+        Collection<Semantics.Guard> pre = new HashSet<>();
         Collection<Semantics.Guard> post = new HashSet<>();
 
 
@@ -192,7 +264,7 @@ public class DafnyAnalyser {
                     .replace("(", "").replace(")", "")
                     .replace(";", "")
                     .replace("-", "MIN").replace("+", "PL")
-                    .replace("*","TIMES").replace("/","DIV");
+                    .replace("*", "TIMES").replace("/", "DIV");
             return src.toString() + "_" + escapedUpdate + "_" + dst.toString();
         }
 
@@ -267,6 +339,27 @@ public class DafnyAnalyser {
 
 
             return toDafnyMethod().render();
+        }
+    }
+
+    /**
+     * The type of guard inferences we want to handle.
+     */
+    public enum GuardSource {
+        EXISTING_GUARDS, GUARDS_INFERENCE, ALL_CONDITIONS;
+
+        @Override
+        public String toString() {
+            switch (this) {
+                case EXISTING_GUARDS:
+                    return "Existing guards";
+                case GUARDS_INFERENCE:
+                    return "Using guards inference logic";
+                case ALL_CONDITIONS:
+                    return "All possible conditions";
+                default:
+                    throw new Error("Unexpected case!");
+            }
         }
     }
 }
