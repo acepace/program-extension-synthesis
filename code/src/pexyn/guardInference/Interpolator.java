@@ -106,7 +106,7 @@ public class Interpolator {
 			if (conj.size() == 1) {
 				tconj = conj.get(0);
 			} else {
-				tconj = s.annotate(s.term("and", conj.toArray(new Term[conj.size()])),
+				tconj = s.annotate(s.term("and", conj.toArray(new Term[0])),
 						new Annotation(":named", c + (varCounter++)));
 			}
 			disj.add(tconj);
@@ -116,7 +116,7 @@ public class Interpolator {
 		if (disj.size() == 1) {
 			tdisj = disj.get(0);
 		} else if (disj.size() > 1) {
-			tdisj = s.annotate(s.term("or", disj.toArray(new Term[disj.size()])),
+			tdisj = s.annotate(s.term("or", disj.toArray(new Term[0])),
 					new Annotation(":named", d + (varCounter++)));
 		}
 		return tdisj;

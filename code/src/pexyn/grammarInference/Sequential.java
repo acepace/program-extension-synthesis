@@ -278,9 +278,9 @@ public class Sequential extends Generalizer {
 			// removing nts used once only
 			final SententialForm sub = newnt.getProductions().get(0);
 			HashSet<Nonterminal> rhsNts = new HashSet<>();
-			for (int i = 0; i < sub.size(); ++i) {
-				if (sub.get(i).getClass() == Nonterminal.class) {
-					rhsNts.add((Nonterminal) sub.get(i));
+			for (Symbol aSub : sub) {
+				if (aSub.getClass() == Nonterminal.class) {
+					rhsNts.add((Nonterminal) aSub);
 				}
 			}
 			HashSet<Nonterminal> removeRhsNts = new HashSet<>();
@@ -725,7 +725,6 @@ public class Sequential extends Generalizer {
 			for (SententialForm prod : nt.getProductions()) {
 				for (int j = 0; j < prod.size() - 1; ++j) {
 					if (prod.subList(j, j + 2).equals(sub)) {
-						prod.remove(j);
 						prod.remove(j);
 						prod.add(j, newnt);
 						res = true;

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import pexyn.Semantics;
 import pexyn.Semantics.Cmd;
 import pexyn.Semantics.Store;
 
@@ -19,6 +20,8 @@ import pexyn.Semantics.Store;
 public class State {
 	public final String id;
 	private Set<TracePoint> points = new HashSet<>();
+	public Set<Semantics.Guard> requirements = new HashSet<>();
+	public Set<Semantics.Guard> assertions = new HashSet<>();
 
 	/**
 	 * Partitions the values in the set of trace points relative to their next
@@ -40,6 +43,22 @@ public class State {
 		for (var point : points) {
 			updateWithPoints(point);
 		}
+	}
+
+	public void addRequirement(Semantics.Guard requirement) {
+		this.requirements.add(requirement);
+	}
+
+	public void addRequirements(Set<Semantics.Guard> requirements){
+		this.requirements.addAll(requirements);
+	}
+
+	public void addAssert(Semantics.Guard assertion) {
+		this.assertions.add(assertion);
+	}
+
+	public void addAssertions(Set<Semantics.Guard> asserts) {
+		this.assertions.addAll(asserts);
 	}
 
 	public Map<Cmd, Collection<Store>> updateToValues() {
@@ -75,11 +94,7 @@ public class State {
 	private void updateWithPoints(TracePoint point) {
 		var update = point.plan.actionAt(point.pos);
 		var value = point.plan.stateAt(point.pos);
-		var values = updateToValues.get(update);
-		if (values == null) {
-			values = new ArrayList<>();
-			updateToValues.put(update, values);
-		}
+		var values = updateToValues.computeIfAbsent(update, k -> new ArrayList<>());
 		values.add(value);
 	}
 }

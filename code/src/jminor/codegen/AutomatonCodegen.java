@@ -11,12 +11,8 @@ import bgu.cs.util.FileUtils;
 import bgu.cs.util.STGLoader;
 import bgu.cs.util.StringUtils;
 import bgu.cs.util.graph.MultiGraph.Edge;
-import jminor.BooleanType;
-import jminor.IntType;
 import jminor.JminorDebugger;
 import jminor.JminorProblem;
-import jminor.RefVar;
-import jminor.Var;
 import pexyn.generalization.Action;
 import pexyn.generalization.Automaton;
 import pexyn.generalization.State;
@@ -54,8 +50,7 @@ public class AutomatonCodegen {
 	public AutomatonCodegen(Automaton automaton, JminorProblem problem, Configuration config, JminorDebugger debugger,
 			Logger logger, String languageName, String fileSuffix, STGLoader templates, SemanticsRenderer semRenderer) {
 		this.automaton = automaton;
-		;
-		this.problem = problem;
+        this.problem = problem;
 		this.config = config;
 		this.debugger = debugger;
 		this.logger = logger;
@@ -180,33 +175,6 @@ public class AutomatonCodegen {
 				this.command = "// finish";
 			} else {
 				this.command = semRenderer.renderCmd(update);
-			}
-		}
-	}
-
-	public final class JavaVar {
-		public final String name;
-		public final String defaultVal;
-		private final String type;
-
-		public String getType() {
-			ST nonNullTypeST = templates.load("NonNullType");
-			nonNullTypeST.add("type", this.type);
-			return nonNullTypeST.render();
-		}
-
-		// TODO: clean this up - get the default value directly from the type.
-		public JavaVar(Var v) {
-			this.name = v.name;
-			this.type = v.getType().getName();
-			if (v.getType() instanceof IntType) {
-				this.defaultVal = "0";
-			} else if (v.getType() instanceof BooleanType) {
-				this.defaultVal = "false";
-			} else if (v instanceof RefVar) {
-				this.defaultVal = "null";
-			} else {
-				throw new Error("Unsupported variable type: " + v);
 			}
 		}
 	}

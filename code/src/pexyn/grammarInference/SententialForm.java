@@ -26,7 +26,7 @@ public class SententialForm extends ArrayList<Symbol> {
 		return rank;
 	}
 
-	final Comparator<SententialForm> longestProd = new Comparator<SententialForm>() {
+	final Comparator<SententialForm> longestProd = new Comparator<>() {
 		public int compare(SententialForm nt1, SententialForm nt2) {
 			// this only compares size since our only multiple alternatives are
 			// when using recursion (2 alternatives).

@@ -77,7 +77,7 @@ public class Signature {
 
 	public static Signature from(final Automaton m, final State s, final int length) {
 		var lookaheadList = getLookaheads(m, s, length);
-		var lookaheads = new HashSet<List<Cmd>>(lookaheadList);
+		var lookaheads = new HashSet<>(lookaheadList);
 		var result = new Signature(lookaheads, length);
 		return result;
 	}

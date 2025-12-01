@@ -16,7 +16,7 @@ public class Grammar {
 	private Nonterminal start;
 	private ArrayList<Nonterminal> nonterminals = new ArrayList<>();
 
-	private final Comparator<Nonterminal> longestProd = new Comparator<Nonterminal>() {
+	private final Comparator<Nonterminal> longestProd = new Comparator<>() {
 		//! @note only works on level1 recursion.
 		public int compare(Nonterminal nt1, Nonterminal nt2) {/*
 			for (SententialForm op : nt1.getProductions()) {
@@ -35,13 +35,13 @@ public class Grammar {
 			int size1 = nt1.expand().size(), size2 = nt2.expand().size();
 			return size2 - size1;*/
 			int diff = nt2.subgraphRank - nt1.subgraphRank;
-			if(diff == 0) {
+			if (diff == 0) {
 				int size1 = nt1.expand().size(), size2 = nt2.expand().size();
 				return size2 - size1;
 			}
 			return diff;
 		}
-		
+
 	};
 
 	public void Sort() {
@@ -54,7 +54,7 @@ public class Grammar {
 
 	public Grammar(Grammar o) {
 		start = new Nonterminal(o.getStart());
-		nonterminals = new ArrayList<Nonterminal>();
+		nonterminals = new ArrayList<>();
 		for(Nonterminal nt: o.getNonterminals()) {
 			Nonterminal newnt = new Nonterminal(nt);
 			nonterminals.add(newnt);
